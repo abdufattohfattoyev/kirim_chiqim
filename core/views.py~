@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 
-from inventory.models import Warehouse, Product
+from inventory.models import Warehouse
 from .models import User, Permission
 from .forms import UserForm, PermissionFormSet
 from django.contrib import messages
@@ -40,7 +40,7 @@ def dashboard_view(request):
         messages.error(request, 'Faqat super admin foydalanuvchilarni boshqarishi mumkin.')
         return redirect('dashboard')
     omborlar_soni = Warehouse.objects.count()
-    mahsulotlar_soni = Product.objects.count()
+    mahsulotlar_soni = Warehouse.objects.aggregate(total_quantity=Sum('products__quantity'))
 
     return render(request, 'index.html', {'omborlar_soni': omborlar_soni, 'mahsulotlar_soni': mahsulotlar_soni})
 
