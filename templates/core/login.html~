@@ -334,5 +334,5 @@
             {% endfor %}
         {% endif %}
 </div>
-<div class="admin-info">Sayt Yaratuvchisi: Fattoyev Abdufattoh</div>
+<div class="admin-info">Sayt admini: Fattoyev Abdufattoh</div>
 {% endblock %}

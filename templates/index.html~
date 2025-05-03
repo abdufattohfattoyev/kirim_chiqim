@@ -305,12 +305,12 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.path == '/chiqim/' %}active{% endif %}" href="{% url 'chiqim_list' %}">
+                <a class="nav-link {% if request.path == '/chiqim/' %}active{% endif %}" href="#">
                     <i class="fas fa-arrow-up"></i> Chiqimlar
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.path == '/chiqim/create/' %}active{% endif %}" href="{% url 'chiqim_create' %}">
+                <a class="nav-link {% if request.path == '/chiqim/create/' %}active{% endif %}" href="#">
                     <i class="fas fa-plus-circle"></i> Chiqim qo'shish
                 </a>
             </li>
