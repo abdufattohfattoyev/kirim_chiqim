@@ -1,0 +1,71 @@
+
+{% extends 'base.html' %}
+{% block title %}Foydalanuvchilar{% endblock %}
+{% block content %}
+<style>
+    .main-content {
+        margin-left: 250px;
+        padding: 20px;
+    }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .table th, .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    .table th {
+        background-color: #2c3e50;
+        color: white;
+    }
+    .table tr:hover {
+        background-color: #f5f5f5;
+    }
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #2c3e50;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .btn:hover {
+        background-color: #34495e;
+    }
+</style>
+<div class="main-content">
+    <h2>Foydalanuvchilar</h2>
+    <a href="{% url 'user_create' %}" class="btn">Yangi foydalanuvchi qo'shish</a>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Foydalanuvchi nomi</th>
+                <th>Rol</th>
+                <th>Admin</th>
+                <th>Super Admin</th>
+                <th>Amallar</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.get_role_display }}</td>
+                <td>{{ user.is_staff|yesno:"Ha,Yo'q" }}</td>
+                <td>{{ user.is_superuser|yesno:"Ha,Yo'q" }}</td>
+                <td><a href="{% url 'user_edit' user.id %}" class="btn">Tahrirlash</a></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">Foydalanuvchilar mavjud emas</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

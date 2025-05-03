@@ -1,0 +1,417 @@
+{% extends "index.html" %}
+{% block title %}Kirimlar{% endblock %}
+{% block content %}
+<style>
+    /* Sidebar bilan asosiy kontent o'rtasidagi masofa */
+    .main-content {
+        margin-left: 250px; /* Sidebar kengligi */
+        padding: 30px;
+        transition: margin-left 0.3s ease;
+    }
+
+    /* Mobil versiya uchun responsive sozlash */
+    @media (max-width: 768px) {
+        .main-content {
+            margin-left: 0;
+            padding: 20px;
+        }
+    }
+
+    /* Kirimlar kartochkasi uchun stil */
+    .card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        padding: 15px 20px;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    .card-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #343a40;
+    }
+
+    .badge {
+        font-size: 0.85rem;
+        padding: 5px 10px;
+        border-radius: 6px;
+    }
+
+    /* Tugmalar uchun stil */
+    .btn {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background-color: #4361ee;
+        border-color: #4361ee;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #3a56d4;
+        border-color: #3a56d4;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+
+    /* Responsive sozlash */
+    @media (max-width: 768px) {
+        .card {
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+        }
+
+        .d-flex.justify-content-between {
+            flex-direction: column;
+        }
+
+        .search-form form {
+            flex-direction: column;
+        }
+
+        .search-form select,
+        .search-form input[type="date"] {
+            width: 100% !important;
+            margin-bottom: 10px;
+        }
+
+        .search-form .btn {
+            width: 100%;
+        }
+    }
+
+    /* Sidebar stilizatsiyasi */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 250px;
+        height: 100vh;
+        padding: 20px;
+        background-color: #ffffff;
+        border-right: 1px solid #e9ecef;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+        z-index: 1000;
+        transition: all 0.3s ease;
+    }
+
+    .sidebar h5 {
+        font-weight: 600;
+        color: #343a40;
+        margin-bottom: 15px;
+    }
+
+    .sidebar .nav-link {
+        color: #495057;
+        padding: 10px 15px;
+        border-radius: 6px;
+        transition: background-color 0.2s;
+    }
+
+    .sidebar .nav-link:hover {
+        background-color: #f1f3f5;
+    }
+
+    .sidebar .nav-item + .nav-item {
+        margin-top: 5px;
+    }
+</style>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <h5>Menyu</h5>
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'dashboard' %}">Bosh sahifa</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'kirim_create' %}">Yangi kirim qo'shish</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'ombor_list' %}">Omborlar</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'chiqim_list' %}">Chiqimlar</a>
+        </li>
+    </ul>
+</div>
+
+<!-- Asosiy kontent -->
+<div class="main-content">
+    <div class="container-fluid py-4 animate-fade-in">
+        <h2 class="mb-4 text-center animate-slide-down">Kirimlar</h2>
+
+        <!-- Tugmalar va qidiruv formasi -->
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap animate-slide-down">
+            <div class="mb-2 action-buttons">
+                <a href="{% url 'kirim_create' %}" class="btn btn-primary me-2">
+                    <i class="fas fa-plus me-1"></i> Yangi kirim qo'shish
+                </a>
+            </div>
+            <div class="search-form d-flex align-items-center mb-2">
+                <form method="get" id="search-form" class="d-flex animate-slide-left">
+                    <select name="supplier" class="form-select me-2" style="width: 200px;">
+                        <option value="">Barcha ta'minotchilar</option>
+                        {% for supplier in suppliers %}
+                            <option value="{{ supplier.id }}" {% if request.GET.supplier == supplier.id|stringformat:"s" %}selected{% endif %}>
+                                {{ supplier.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <input type="date" name="date" class="form-control me-2" style="width: 150px;" value="{{ request.GET.date }}">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i> Qidirish
+                    </button>
+                    {% if request.GET.supplier or request.GET.date %}
+                    <a href="{% url 'kirim_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i> Tozalash
+                    </a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        <!-- Kirimlar card ko'rinishida -->
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 animate-fade-in" id="kirim-list">
+            {% for kirim in page_obj %}
+            <div class="col" data-kirim-id="{{ kirim.id }}">
+                <div class="card h-100 shadow-sm border-0 card-hover">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title mb-0">
+                                <a href="#" class="text-decoration-none text-primary">
+                                    Kirim #{{ kirim.id }}
+                                </a>
+                            </h5>
+                            <span class="badge bg-{% if kirim.debt > 0 %}danger{% else %}success{% endif %} text-white">
+                                {{ kirim.date|date:"d.m.Y" }}
+                            </span>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Ta'minotchi:</span>
+                                <span class="fw-bold">{% if kirim.supplier %}{{ kirim.supplier.name }}{% else %}---{% endif %}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Jami summa:</span>
+                                <span class="fw-bold">{{ kirim.total_amount|floatformat:"0" }} so'm</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">To'langan:</span>
+                                <span class="fw-bold">{{ kirim.paid_amount|floatformat:"0" }} so'm</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Qoldiq:</span>
+                                <span class="fw-bold text-{% if kirim.debt > 0 %}danger{% else %}success{% endif %}">
+                                    {{ kirim.debt|floatformat:"0" }} so'm
+                                </span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
+                            <a href="#" class="btn btn-success btn-sm">
+                                <i class="fas fa-eye me-1"></i> Batafsil
+                            </a>
+                            <div class="d-flex gap-2">
+                                <a href="#" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-edit me-1"></i> Tahrirlash
+                                </a>
+                                <a href="#" class="btn btn-danger btn-sm delete-kirim-btn">
+                                    <i class="fas fa-trash me-1"></i> O'chirish
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center animate-fade-in">
+                <div class="alert alert-info">Kirimlar topilmadi.</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="d-flex justify-content-center mt-4 animate-fade-in">
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">
+                            « Oldingi
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">
+                            Keyingi »
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- O'chirishni tasdiqlash uchun modal -->
+<div class="modal fade" id="deleteKirimModal" tabindex="-1" aria-labelledby="deleteKirimModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteKirimModalLabel">Kirimni o'chirish</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Haqiqatan ham bu kirimni o'chirmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.</p>
+                <p class="text-danger"><strong>Diqqat!</strong> Kirim bilan birga uning barcha mahsulotlari ham o'chib ketadi!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Bekor qilish
+                </button>
+                <a id="confirmDeleteKirim" href="#" class="btn btn-danger">
+                    <i class="fas fa-trash me-1"></i> O'chirish
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(document).ready(function() {
+    // Kirim o'chirish
+    $(document).on('click', '.delete-kirim-btn', function(e) {
+        e.preventDefault();
+        const kirimId = $(this).data('kirim-id');
+        const btn = $(this);
+        btn.addClass('animate__animated animate__headShake');
+        setTimeout(() => btn.removeClass('animate__animated animate__headShake'), 1000);
+        $('#confirmDeleteKirim').attr('href', '/kirim/delete/' + kirimId + '/');
+        $('#deleteKirimModal').modal('show');
+    });
+
+    // Kirim o'chirishni tasdiqlash
+    $('#confirmDeleteKirim').click(function(e) {
+        e.preventDefault();
+        const url = $(this).attr('href');
+        const modal = $('#deleteKirimModal');
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: {
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            beforeSend: function() {
+                modal.find('.btn').prop('disabled', true);
+                $('#confirmDeleteKirim').html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> O\'chirilmoqda...');
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    const card = $(`div[data-kirim-id="${response.kirim_id}"]`);
+                    card.addClass('animate__animated animate__zoomOut');
+                    setTimeout(() => card.remove(), 500);
+                    showToast('success', response.message);
+                } else {
+                    showToast('error', response.message || 'Kirimni o\'chirishda xatolik yuz berdi.');
+                }
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                showToast('error', errorMsg);
+            },
+            complete: function() {
+                modal.modal('hide');
+                modal.find('.btn').prop('disabled', false);
+                $('#confirmDeleteKirim').html('<i class="fas fa-trash me-1"></i> O\'chirish');
+            }
+        });
+    });
+
+    // Toast notification funktsiyasi
+    function showToast(icon, message) {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            showClass: {
+                popup: 'animate__animated animate__fadeInRight'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutRight'
+            },
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+        Toast.fire({
+            icon: icon,
+            title: message
+        });
+    }
+});
+</script>
+{% endblock %}

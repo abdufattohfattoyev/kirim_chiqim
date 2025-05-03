@@ -1,0 +1,100 @@
+{% extends "index.html" %}
+{% block title %}Ta'minotchilar{% endblock %}
+{% block content %}
+<style>
+    .main-content {
+        margin-left: 250px;
+        padding: 20px;
+    }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .table th, .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    .table th {
+        background-color: #2c3e50;
+        color: white;
+    }
+    .table tr:hover {
+        background-color: #f5f5f5;
+    }
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #2c3e50;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .btn:hover {
+        background-color: #34495e;
+    }
+</style>
+<div class="main-content">
+    <h2>Ta'minotchilar</h2>
+    <form method="get" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="Qidirish..." value="{{ query }}">
+            <button type="submit" class="btn btn-primary">Qidirish</button>
+        </div>
+    </form>
+    <a href="{% url 'supplier_create' %}" class="btn">Yangi ta'minotchi qo'shish</a>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Ism</th>
+                <th>Telefon raqami</th>
+                <th>Boshlang'ich qarz</th>
+                <th>Balans</th>
+                <th>Amallar</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for supplier in page_obj %}
+            <tr>
+                <td>{{ supplier.name }}</td>
+                <td>{{ supplier.phone_number }}</td>
+                <td>{{ supplier.initial_debt }}</td>
+                <td>{{ supplier.balance }}</td>
+                <td>
+                    <a href="{% url 'supplier_edit' supplier.id %}" class="btn btn-sm btn-warning">Tahrirlash</a>
+                    <a href="{% url 'supplier_delete' supplier.id %}" class="btn btn-sm btn-danger">O‘chirish</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">Ta'minotchilar mavjud emas</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">Oldingi</a>
+            </li>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">Keyingi</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

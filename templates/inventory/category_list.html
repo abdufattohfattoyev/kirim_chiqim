@@ -1,0 +1,868 @@
+{% extends "index.html" %}
+{% block title %}Kategoriyalar{% endblock %}
+{% block content %}
+<div class="container-fluid py-4 animate-fade-in">
+    <h2 class="mb-4 text-center animate-slide-down">Kategoriyalar</h2>
+
+    <!-- Tugmalar va qidiruv formasi -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap animate-slide-down">
+        <div class="mb-2 action-buttons">
+            <a href="#" class="btn btn-primary me-2 btn-hover-scale" data-bs-toggle="modal" data-bs-target="#categoryModal" onclick="openCategoryModal('Yangi kategoriya qo\'shish')">
+                <i class="fas fa-tags me-1"></i> Yangi kategoriya qo'shish
+            </a>
+        </div>
+        <div class="search-form d-flex align-items-center mb-2">
+            <form method="get" id="search-form" class="d-flex animate-slide-left w-100">
+                <input type="text" name="q" placeholder="Kategoriya nomi bo'yicha qidiring" value="{{ request.GET.q }}"
+                       class="form-control me-2 search-input" style="width: 250px;">
+                <button type="submit" class="btn btn-primary btn-hover-scale">
+                    <i class="fas fa-search me-1"></i> Qidirish
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Kategoriyalar card ko'rinishida -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 animate-fade-in" id="category-list">
+        {% for category in categories %}
+        <div class="col" data-category-id="{{ category.id }}">
+            <div class="card h-100 shadow-sm border-0 card-hover">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-primary">{{ category.name }}</span>
+                        <span class="badge bg-info text-white">{{ category.product_count }} mahsulot</span>
+                    </h5>
+                    {% if category.image %}
+                    <div class="category-image mb-3 text-center">
+                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="img-fluid rounded" style="max-height: 120px;">
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
+                        <button class="btn btn-success btn-sm btn-hover-scale show-products-btn" data-category-id="{{ category.id }}">
+                            <i class="fas fa-eye me-1"></i> Mahsulotlarni ko'rish
+                        </button>
+                        <div class="d-flex gap-2">
+                            <a href="#" class="btn btn-primary btn-sm edit-category-btn btn-hover-scale"
+                               data-category-id="{{ category.id }}" data-bs-toggle="modal" data-bs-target="#categoryModal">
+                                <i class="fas fa-edit me-1"></i> Tahrirlash
+                            </a>
+                            <a href="#" class="btn btn-danger btn-sm delete-category-btn btn-hover-scale"
+                               data-category-id="{{ category.id }}">
+                                <i class="fas fa-trash me-1"></i> O'chirish
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center animate-fade-in">
+            <div class="alert alert-info">Kategoriyalar topilmadi.</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="d-flex justify-content-center mt-4 animate-fade-in">
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                        « Oldingi
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                        Keyingi »
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+
+    <!-- Bog'liq mahsulotlar -->
+    <div class="mt-4 animate-fade-in" id="related-products" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">Bog'liq Mahsulotlar</h3>
+            <button class="btn btn-secondary btn-sm btn-hover-scale" id="hide-products-btn">
+                <i class="fas fa-times me-1"></i> Yopish
+            </button>
+        </div>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="product-list">
+            <!-- Mahsulotlar dinamik ravishda qo'shiladi -->
+        </div>
+    </div>
+
+    <!-- Kategoriya qo'shish/tahrirlash uchun modal -->
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="categoryModalLabel">Yangi kategoriya qo'shish</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="category-form" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="category_id" id="category-id">
+                        <div class="mb-3">
+                            <label for="category-name" class="form-label">Kategoriya nomi</label>
+                            <input type="text" class="form-control animate-input-focus" id="category-name" name="name"
+                                   placeholder="Kategoriya nomini kiriting" required>
+                            <div class="invalid-feedback">Iltimos, kategoriya nomini kiriting.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category-image" class="form-label">Kategoriya rasmi (ixtiyoriy)</label>
+                            <input type="file" class="form-control animate-input-focus" id="category-image" name="image" accept="image/*">
+                            <div class="invalid-feedback">Iltimos, to'g'ri formatdagi rasm tanlang.</div>
+                            <div id="image-preview" class="mt-2 text-center" style="display: none;">
+                                <img id="preview-img" src="#" alt="Rasm ko'rinishi" class="img-fluid rounded" style="max-height: 150px;">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between flex-wrap gap-2">
+                            <button type="submit" class="btn btn-primary btn-hover-scale" id="save-category-btn">
+                                <i class="fas fa-save me-1"></i> Saqlash
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-hover-scale" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-1"></i> Bekor qilish
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript va SweetAlert2 -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+// Animatsiyalar uchun funktsiyalar
+function animateElement(element, animation, delay = 0) {
+    setTimeout(() => {
+        element.classList.add('animate__animated', `animate__${animation}`);
+    }, delay);
+}
+
+// Sahifa yuklanganda animatsiyalar
+document.addEventListener('DOMContentLoaded', function() {
+    const animatedElements = document.querySelectorAll('.animate-fade-in, .animate-slide-down, .animate-slide-left');
+    animatedElements.forEach((el, index) => {
+        const delay = index * 100;
+        if (el.classList.contains('animate-fade-in')) {
+            animateElement(el, 'fadeIn', delay);
+        } else if (el.classList.contains('animate-slide-down')) {
+            animateElement(el, 'slideInDown', delay);
+        } else if (el.classList.contains('animate-slide-left')) {
+            animateElement(el, 'slideInLeft', delay);
+        }
+    });
+});
+
+// Rasmni oldindan ko'rish
+document.getElementById('category-image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('preview-img');
+    const previewContainer = document.getElementById('image-preview');
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            previewContainer.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        preview.src = '#';
+        previewContainer.style.display = 'none';
+    }
+});
+
+function openCategoryModal(title, categoryId = null, categoryData = null) {
+    const modal = $('#categoryModal');
+    const form = $('#category-form');
+    const saveBtn = $('#save-category-btn');
+
+    // Modal sarlavhasini o'rnatish
+    modal.find('.modal-title').text(title);
+
+    // Formani tozalash
+    form[0].reset();
+    $('#category-id').val(categoryId || '');
+    $('#category-name').removeClass('is-invalid');
+    $('#image-preview').hide();
+    saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
+
+    // Agar categoryData bo'lsa, tahrirlash rejimi
+    if (categoryId && categoryData) {
+        $('#category-name').val(categoryData.name);
+        if (categoryData.image_url) {
+            $('#preview-img').attr('src', categoryData.image_url);
+            $('#image-preview').show();
+        }
+        form.attr('action', '/inventory/category/edit/' + categoryId + '/');
+    } else {
+        // Yangi kategoriya qo'shish rejimi
+        form.attr('action', '{% url 'category_create' %}');
+    }
+
+    modal.modal('show');
+}
+
+$(document).ready(function() {
+    // Input fokus animatsiyasi
+    $('.animate-input-focus').focus(function() {
+        $(this).addClass('focus-animate');
+    }).blur(function() {
+        $(this).removeClass('focus-animate');
+    });
+
+    // Kategoriya qo'shish/tahrirlash formasi
+    $('#category-form').submit(function(e) {
+        e.preventDefault();
+        const form = $(this);
+        const categoryName = $('#category-name').val().trim();
+        const saveBtn = $('#save-category-btn');
+
+        if (!categoryName) {
+            $('#category-name').addClass('is-invalid');
+            showToast('error', 'Iltimos, kategoriya nomini kiriting.');
+            return;
+        }
+
+        $('#category-name').removeClass('is-invalid');
+        const url = form.attr('action');
+        saveBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saqlanmoqda...');
+
+        const formData = new FormData(form[0]);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.status === 'success') {
+                    const category = response.category;
+                    let card = $(`div[data-category-id="${category.id}"]`);
+
+                    if (card.length) {
+                        // Tahrirlash
+                        card.find('.card-title span').text(category.name);
+                        card.find('.badge').text(category.product_count + ' mahsulot');
+
+                        if (category.image_url) {
+                            let imageContainer = card.find('.category-image');
+                            if (imageContainer.length) {
+                                imageContainer.find('img').attr('src', category.image_url);
+                            } else {
+                                card.find('.card-body').prepend(`
+                                    <div class="category-image mb-3 text-center">
+                                        <img src="${category.image_url}" alt="${category.name}" class="img-fluid rounded" style="max-height: 120px;">
+                                    </div>
+                                `);
+                            }
+                        } else {
+                            card.find('.category-image').remove();
+                        }
+
+                        card.addClass('animate__animated animate__pulse');
+                        setTimeout(() => card.removeClass('animate__animated animate__pulse'), 1000);
+                    } else {
+                        // Qo'shish
+                        const newCard = $(`
+                            <div class="col" data-category-id="${category.id}">
+                                <div class="card h-100 shadow-sm border-0 card-hover animate__animated animate__zoomIn">
+                                    <div class="card-body d-flex flex-column">
+                                        <h5 class="card-title d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-primary">${category.name}</span>
+                                            <span class="badge bg-info text-white">${category.product_count} mahsulot</span>
+                                        </h5>
+                                        ${category.image_url ? `
+                                        <div class="category-image mb-3 text-center">
+                                            <img src="${category.image_url}" alt="${category.name}" class="img-fluid rounded" style="max-height: 120px;">
+                                        </div>
+                                        ` : ''}
+                                        <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
+                                            <button class="btn btn-success btn-sm btn-hover-scale show-products-btn" data-category-id="${category.id}">
+                                                <i class="fas fa-eye me-1"></i> Mahsulotlarni ko'rish
+                                            </button>
+                                            <div class="d-flex gap-2">
+                                                <a href="#" class="btn btn-primary btn-sm edit-category-btn btn-hover-scale"
+                                                   data-category-id="${category.id}" data-bs-toggle="modal" data-bs-target="#categoryModal">
+                                                    <i class="fas fa-edit me-1"></i> Tahrirlash
+                                                </a>
+                                                <a href="#" class="btn btn-danger btn-sm delete-category-btn btn-hover-scale"
+                                                   data-category-id="${category.id}">
+                                                    <i class="fas fa-trash me-1"></i> O'chirish
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                        $('#category-list').prepend(newCard);
+                    }
+
+                    $('#categoryModal').modal('hide');
+                    showToast('success', response.message);
+                } else {
+                    showToast('error', response.message || 'Kategoriya qo\'shishda xatolik yuz berdi.');
+                }
+            },
+            error: function(xhr) {
+                let errorMsg = 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                } else if (xhr.status === 400) {
+                    errorMsg = 'Bu nomdagi kategoriya allaqachon mavjud.';
+                }
+                showToast('error', errorMsg);
+            },
+            complete: function() {
+                saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
+            }
+        });
+    });
+
+    // Tahrirlash tugmasi
+    $(document).on('click', '.edit-category-btn', function(e) {
+        e.preventDefault();
+        const categoryId = $(this).data('category-id');
+        $(this).addClass('animate__animated animate__rubberBand');
+        setTimeout(() => $(this).removeClass('animate__animated animate__rubberBand'), 1000);
+
+        $.ajax({
+            url: '/inventory/category/edit/' + categoryId + '/',
+            type: 'GET',
+            success: function(data) {
+                if (data.status === 'success') {
+                    openCategoryModal('Kategoriyani tahrirlash', categoryId, data.category);
+                } else {
+                    showToast('error', data.message || 'Kategoriya ma\'lumotlarini olishda xatolik yuz berdi.');
+                }
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                showToast('error', errorMsg);
+            }
+        });
+    });
+
+    // Kategoriya o'chirish
+    $(document).on('click', '.delete-category-btn', function(e) {
+        e.preventDefault();
+        const categoryId = $(this).data('category-id');
+        const btn = $(this);
+        btn.addClass('animate__animated animate__headShake');
+        setTimeout(() => btn.removeClass('animate__animated animate__headShake'), 1000);
+
+        Swal.fire({
+            title: 'O\'chirishni tasdiqlaysizmi?',
+            html: `<p>Bu kategoriyani haqiqatan ham o'chirishni xohlaysizmi?</p><p class="text-danger"><strong>Diqqat!</strong> Kategoriya bilan birga uning barcha mahsulotlari ham o'chib ketishi mumkin!</p>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ha, o\'chirish',
+            cancelButtonText: 'Yo\'q, bekor qilish',
+            customClass: {
+                confirmButton: 'btn btn-danger me-2',
+                cancelButton: 'btn btn-secondary'
+            },
+            buttonsStyling: false,
+            showClass: {
+                popup: 'animate__animated animate__fadeInDown'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutUp'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/inventory/category/delete/' + categoryId + '/',
+                    type: 'POST',
+                    data: { 'csrfmiddlewaretoken': '{{ csrf_token }}' },
+                    beforeSend: function() {
+                        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> O\'chirilmoqda...');
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            const card = $(`div[data-category-id="${response.category_id}"]`);
+                            card.addClass('animate__animated animate__zoomOut');
+                            setTimeout(() => card.remove(), 500);
+                            showToast('success', response.message);
+                        } else {
+                            showToast('error', response.message || 'Kategoriyani o\'chirishda xatolik yuz berdi.');
+                        }
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                        showToast('error', errorMsg);
+                    },
+                    complete: function() {
+                        btn.prop('disabled', false).html('<i class="fas fa-trash me-1"></i> O\'chirish');
+                    }
+                });
+            }
+        });
+    });
+
+    // Mahsulotlarni ko'rish tugmasi
+    $(document).on('click', '.show-products-btn', function(e) {
+        e.preventDefault();
+        const categoryId = $(this).data('category-id');
+        const btn = $(this);
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Yuklanmoqda...');
+
+        $.ajax({
+            url: '/inventory/category/' + categoryId + '/products/',
+            type: 'GET',
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#related-products').show().addClass('animate__animated animate__fadeIn');
+                    $('#product-list').empty();
+
+                    if (response.products.length > 0) {
+                        response.products.forEach(product => {
+                            $('#product-list').append(`
+                                <div class="col">
+                                    <div class="card h-100 shadow-sm border-0 card-hover">
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="card-title">${product.name}</h5>
+                                            <p class="card-text mb-1"><strong>Miqdor:</strong> ${product.quantity}</p>
+                                            <p class="card-text mb-1"><strong>Minimal miqdor:</strong> ${product.minimum_quantity}</p>
+                                            <a href="/inventory/product/${product.id}/" class="btn btn-primary btn-sm btn-hover-scale mt-auto">
+                                                <i class="fas fa-info-circle me-1"></i> Batafsil
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                        });
+                    } else {
+                        $('#product-list').append('<div class="col-12 text-center"><div class="alert alert-info">Mahsulotlar topilmadi.</div></div>');
+                    }
+
+                    // Scroll to products section
+                    $('html, body').animate({
+                        scrollTop: $('#related-products').offset().top - 20
+                    }, 500);
+                } else {
+                    showToast('error', response.message || 'Mahsulotlarni yuklashda xatolik yuz berdi.');
+                }
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                showToast('error', errorMsg);
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="fas fa-eye me-1"></i> Mahsulotlarni ko\'rish');
+            }
+        });
+    });
+
+    // Mahsulotlarni yopish tugmasi
+    $('#hide-products-btn').click(function() {
+        $('#related-products').hide();
+    });
+
+    // Toast notification funktsiyasi
+    function showToast(icon, message) {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            showClass: {
+                popup: 'animate__animated animate__fadeInRight'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutRight'
+            },
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+
+        Toast.fire({
+            icon: icon,
+            title: message
+        });
+    }
+
+    // Modal yopilganda formani tozalash
+    $('#categoryModal').on('hidden.bs.modal', function () {
+        $('#category-form')[0].reset();
+        $('#category-name').removeClass('is-invalid');
+        $('#category-id').val('');
+        $('#image-preview').hide();
+        $('#save-category-btn').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
+    });
+});
+</script>
+
+<style>
+/* Animatsiyalar uchun */
+.animate__animated {
+    --animate-duration: 0.5s;
+}
+
+/* Card hover effektlari */
+.card-hover {
+    transition: all 0.3s ease;
+    transform: translateY(0);
+    border-radius: 8px;
+}
+
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Tugma hover effektlari */
+.btn-hover-scale {
+    transition: all 0.2s ease;
+}
+
+.btn-hover-scale:hover {
+    transform: scale(1.05);
+}
+
+/* Input fokus animatsiyasi */
+.animate-input-focus {
+    transition: all 0.3s ease;
+}
+
+.animate-input-focus.focus-animate {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    border-color: #86b7fe;
+}
+
+/* Search input animatsiyasi */
+.search-input {
+    transition: all 0.5s ease;
+}
+
+/* Modal animatsiyasi */
+.modal.fade .modal-dialog {
+    transform: translateY(-50px);
+    transition: all 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+    transform: translateY(0);
+}
+
+/* Pagination stilizatsiyasi */
+.pagination .page-link {
+    transition: all 0.2s ease;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+    color: #0d6efd;
+}
+
+/* Badge dizayni */
+.badge {
+    font-size: 0.85rem;
+    padding: 5px 10px;
+}
+
+/* Tugmalar dizayni */
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #b02a37;
+    border-color: #b02a37;
+}
+
+/* Kategoriya rasmlari uchun */
+.category-image img {
+    object-fit: contain;
+    max-width: 100%;
+    border: 1px solid #eee;
+}
+
+/* Responsive stil */
+
+/* Mobil qurilmalar (576px gacha) */
+@media (max-width: 576px) {
+    .container-fluid {
+        padding: 15px;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    .action-buttons {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+
+    .search-form {
+        width: 100%;
+        margin-top: 15px;
+    }
+
+    .search-input {
+        width: 100% !important;
+    }
+
+    .search-form .btn {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .card-title {
+        flex-direction: column;
+        align-items: flex-start !important;
+        font-size: 1.1rem;
+    }
+
+    .badge {
+        margin-top: 5px;
+        font-size: 0.75rem;
+    }
+
+    .card-text {
+        font-size: 0.85rem;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-sm {
+        width: 100%;
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+
+    .pagination .page-link {
+        font-size: 0.85rem;
+        padding: 5px 10px;
+    }
+
+    .modal-dialog {
+        margin: 10px;
+    }
+
+    .modal-content {
+        width: 100%;
+    }
+
+    .modal-body {
+        padding: 15px;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+        margin-top: 10px;
+    }
+}
+
+/* Planshetlar (576px - 768px) */
+@media (min-width: 576px) and (max-width: 768px) {
+    .container-fluid {
+        padding: 20px;
+    }
+
+    h2 {
+        font-size: 1.75rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .action-buttons .btn {
+        font-size: 0.95rem;
+        padding: 8px 12px;
+    }
+
+    .search-form {
+        width: 100%;
+        margin-top: 15px;
+    }
+
+    .search-input {
+        width: 100% !important;
+    }
+
+    .search-form .btn {
+        width: auto;
+        margin-left: 10px;
+    }
+
+    .card-title {
+        font-size: 1.15rem;
+    }
+
+    .badge {
+        font-size: 0.8rem;
+    }
+
+    .card-text {
+        font-size: 0.9rem;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
+
+    .d-flex.justify-content-between {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .btn-sm {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+
+    .pagination .page-link {
+        font-size: 0.9rem;
+    }
+
+    .modal-dialog {
+        max-width: 90%;
+    }
+}
+
+/* Kompyuterlar (768px dan yuqori) */
+@media (min-width: 768px) {
+    .container-fluid {
+        padding: 30px;
+    }
+
+    h2 {
+        font-size: 2rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .action-buttons .btn {
+        font-size: 1rem;
+        padding: 10px 15px;
+    }
+
+    .search-form {
+        width: auto;
+    }
+
+    .search-input {
+        width: 250px !important;
+    }
+
+    .search-input:focus {
+        width: 300px !important;
+    }
+
+    .card-title {
+        font-size: 1.25rem;
+    }
+
+    .badge {
+        font-size: 0.85rem;
+    }
+
+    .card-text {
+        font-size: 0.95rem;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    .btn-sm {
+        font-size: 0.95rem;
+        padding: 8px 12px;
+    }
+
+    .pagination .page-link {
+        font-size: 1rem;
+    }
+
+    .modal-dialog {
+        max-width: 500px;
+    }
+}
+
+/* Katta ekranlar (992px dan yuqori) */
+@media (min-width: 992px) {
+    .row-cols-lg-4 > .col {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+}
+</style>
+{% endblock %}

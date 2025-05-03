@@ -1,0 +1,178 @@
+{% extends "index.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4 text-center">Ta'minotchilar</h2>
+
+    <!-- Tugmalar va qidiruv formasi -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <div class="mb-2">
+            <a href="#" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#supplierModal" onclick="openSupplierModal('Yangi ta\'minotchi qo‘shish')">
+                <i class="fas fa-plus me-1"></i> Yangi ta'minotchi qo‘shish
+            </a>
+        </div>
+        <div class="search-form d-flex align-items-center mb-2">
+            <form method="get" id="search-form" class="d-flex">
+                <input type="text" name="q" placeholder="Ta'minotchi bo'yicha qidiring" value="{{ request.GET.q }}" class="form-control me-2" style="width: 250px;">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search me-1"></i> Qidirish</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ta'minotchilar ro‘yxati -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="supplier-list">
+        {% for supplier in suppliers %}
+        <div class="col" data-supplier-id="{{ supplier.id }}">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title">{{ supplier.name }}</h5>
+                    <p class="card-text mb-1"><strong>Aloqa:</strong> {{ supplier.contact }}</p>
+                    <div class="d-flex justify-content-between mt-3">
+                        <a href="#" class="btn btn-primary btn-sm edit-supplier-btn" data-supplier-id="{{ supplier.id }}" data-bs-toggle="modal" data-bs-target="#supplierModal">
+                            <i class="fas fa-edit me-1"></i> Tahrirlash
+                        </a>
+                        <a href="#" class="btn btn-danger btn-sm delete-supplier-btn" data-supplier-id="{{ supplier.id }}">
+                            <i class="fas fa-trash me-1"></i> O‘chirish
+                        </a>
+                    </div>
+                    <a href="#" class="btn btn-accent btn-sm mt-2 show-incomings-btn" data-supplier-id="{{ supplier.id }}">
+                        <i class="fas fa-eye me-1"></i> Kirimlarni ko‘rish
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center">
+            <div class="alert alert-info">Ta'minotchilar topilmadi.</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Bog‘liq kirimlar -->
+    <div class="mt-4" id="related-incomings" style="display: none;">
+        <h3>Bog‘liq Kirimlar</h3>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="incoming-list">
+            <!-- Kirimlar dinamik ravishda qo'shiladi -->
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Tahrirlash tugmasi
+    $(document).on('click', '.edit-supplier-btn', function(e) {
+        e.preventDefault();
+        var supplierId = $(this).data('supplier-id');
+        $.ajax({
+            url: '/inventory/supplier/edit/' + supplierId + '/',
+            type: 'GET',
+            success: function(data) {
+                if (data.status === 'success') {
+                    openSupplierModal('Ta\'minotchini tahrirlash', supplierId, data.form);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Xatolik',
+                        text: data.message || 'Ta\'minotchi ma’lumotlarini olishda xatolik yuz berdi.',
+                        position: 'top-end',
+                        timer: 3000,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        width: '300px',
+                        padding: '10px'
+                    });
+                }
+            }
+        });
+    });
+
+    // O‘chirish tugmasi
+    $(document).on('click', '.delete-supplier-btn', function(e) {
+        e.preventDefault();
+        var supplierId = $(this).data('supplier-id');
+        Swal.fire({
+            title: 'O‘chirishni tasdiqlaysizmi?',
+            text: 'Bu ta\'minotchini haqiqatan ham o‘chirishni xohlaysizmi?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ha, o‘chirish',
+            cancelButtonText: 'Yo‘q, bekor qilish',
+            position: 'top-end',
+            timer: 5000,
+            timerProgressBar: true,
+            width: '300px',
+            padding: '10px'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/inventory/supplier/delete/' + supplierId + '/',
+                    type: 'POST',
+                    data: { 'csrfmiddlewaretoken': '{{ csrf_token }}' },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            $('div[data-supplier-id="' + response.supplier_id + '"]').remove();
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Muvaffaqiyat',
+                                text: response.message,
+                                position: 'top-end',
+                                timer: 2000,
+                                timerProgressBar: true,
+                                showConfirmButton: false,
+                                width: '300px',
+                                padding: '10px'
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Xatolik',
+                                text: response.message || 'Ta\'minotchini o‘chirishda xatolik yuz berdi.',
+                                position: 'top-end',
+                                timer: 3000,
+                                timerProgressBar: true,
+                                showConfirmButton: false,
+                                width: '300px',
+                                padding: '10px'
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    // Kirimlarni ko‘rish tugmasi
+    $(document).on('click', '.show-incomings-btn', function(e) {
+        e.preventDefault();
+        var supplierId = $(this).data('supplier-id');
+        $.ajax({
+            url: '/inventory/supplier/' + supplierId + '/incomings/',
+            type: 'GET',
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#related-incomings').show();
+                    $('#incoming-list').empty();
+                    if (response.incomings.length > 0) {
+                        response.incomings.forEach(incoming => {
+                            $('#incoming-list').append(`
+                                <div class="col">
+                                    <div class="card h-100 shadow-sm border-0">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Kirim #${incoming.id}</h5>
+                                            <p class="card-text mb-1"><strong>Mahsulot:</strong> ${incoming.product}</p>
+                                            <p class="card-text mb-1"><strong>Miqdor:</strong> ${incoming.quantity}</p>
+                                            <p class="card-text mb-1"><strong>Sana:</strong> ${incoming.date}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                        });
+                    } else {
+                        $('#incoming-list').append('<div class="col-12 text-center"><div class="alert alert-info">Kirimlar topilmadi.</div></div>');
+                    }
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

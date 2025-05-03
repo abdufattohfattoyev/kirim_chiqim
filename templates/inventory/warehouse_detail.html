@@ -1,0 +1,596 @@
+{% extends "index.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4 text-center">{{ warehouse.name }} - Mahsulotlar</h2>
+
+    <!-- Tugmalar va qidiruv formasi -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <div class="mb-2">
+            <a href="{% url 'ombor_list' %}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left me-1"></i> Omborlar ro‘yxatiga qaytish
+            </a>
+            <a href="#" class="btn btn-primary me-2" data-bs-toggle="offcanvas" data-bs-target="#productSidebar" onclick="openSidebar('Yangi mahsulot qo‘shish')">
+                <i class="fas fa-plus me-1"></i> Yangi mahsulot qo‘shish
+            </a>
+            <a href="{% url 'export_products_csv' warehouse.id %}" class="btn btn-primary me-2">
+                <i class="fas fa-file-export me-1"></i> Eksport qilish
+            </a>
+            <a href="{% url 'import_products_csv' warehouse.id %}" class="btn btn-primary">
+                <i class="fas fa-file-import me-1"></i> Import qilish
+            </a>
+        </div>
+        <div class="search-form d-flex align-items-center mb-2">
+            <form method="get" id="search-form" class="d-flex">
+                <input type="text" name="q" placeholder="Mahsulot yoki kategoriya bo'yicha qidiring" value="{{ request.GET.q }}" class="form-control me-2" style="width: 250px;">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search me-1"></i> Qidirish</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Mahsulotlar card ko‘rinishida -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="product-list">
+        {% for product in page_obj %}
+        <div class="col" data-product-id="{{ product.id }}">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="position-relative">
+                    {% if product.image %}
+                    <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <img src="https://via.placeholder.com/300x200.png?text=Mahsulot+Rasmi+Yok" class="card-img-top" alt="Placeholder" style="height: 200px; object-fit: cover;">
+                    {% endif %}
+                    {% if product.quantity < product.minimum_quantity %}
+                    <span class="badge bg-danger position-absolute top-0 end-0 m-2">Kam miqdor</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ product.name }}</h5>
+                    <p class="card-text mb-1"><strong>Kategoriya:</strong> {{ product.category.name|default:"Kategoriyasiz" }}</p>
+                    <p class="card-text mb-1"><strong>Miqdor:</strong> {{ product.quantity }}</p>
+                    <p class="card-text mb-3"><strong>Minimal miqdor:</strong> {{ product.minimum_quantity }}</p>
+                    <div class="d-flex justify-content-between">
+                        <a href="#" class="btn btn-primary btn-sm edit-product-btn" data-product-id="{{ product.id }}" data-bs-toggle="offcanvas" data-bs-target="#productSidebar">
+                            <i class="fas fa-edit me-1"></i> Tahrirlash
+                        </a>
+                        <a href="#" class="btn btn-danger btn-sm delete-product-btn" data-product-id="{{ product.id }}">
+                            <i class="fas fa-trash me-1"></i> O‘chirish
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center">
+            <div class="alert alert-info">Mahsulotlar topilmadi.</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-center mt-4">
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Oldingi</a>
+                </li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Keyingi</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
+    <!-- O‘ng tarafdagi sidebar (offcanvas) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="productSidebar" aria-labelledby="productSidebarLabel">
+        <div class="offcanvas-header bg-primary text-white">
+            <h5 class="offcanvas-title" id="sidebar-title">Yangi mahsulot qo‘shish</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <form id="product-form" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="product_id" id="product-id">
+
+                <div class="mb-3">
+                    <label for="id_name" class="form-label">Mahsulot nomi</label>
+                    {{ product_form.name }}
+                    {% if product_form.name.errors %}
+                        <div class="text-danger">{{ product_form.name.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_warehouse" class="form-label">Ombor</label>
+                    {{ product_form.warehouse }}
+                    {% if product_form.warehouse.errors %}
+                        <div class="text-danger">{{ product_form.warehouse.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_category" class="form-label">Kategoriya</label>
+                    {{ product_form.category }}
+                    {% if product_form.category.errors %}
+                        <div class="text-danger">{{ product_form.category.errors }}</div>
+                    {% endif %}
+                    <div class="mt-2">
+                        <a href="#" id="add-category-btn" class="text-primary small" data-bs-toggle="modal" data-bs-target="#categoryModal">
+                            Yangi kategoriya qo‘shish
+                        </a>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_new_category" class="form-label">Yangi kategoriya nomi (ixtiyoriy)</label>
+                    {{ product_form.new_category }}
+                    {% if product_form.new_category.errors %}
+                        <div class="text-danger">{{ product_form.new_category.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_image" class="form-label">Mahsulot rasmi</label>
+                    {{ product_form.image }}
+                    {% if product_form.image.errors %}
+                        <div class="text-danger">{{ product_form.image.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_quantity" class="form-label">Miqdor</label>
+                    {{ product_form.quantity }}
+                    {% if product_form.quantity.errors %}
+                        <div class="text-danger">{{ product_form.quantity.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_minimum_quantity" class="form-label">Minimal miqdor</label>
+                    {{ product_form.minimum_quantity }}
+                    {% if product_form.minimum_quantity.errors %}
+                        <div class="text-danger">{{ product_form.minimum_quantity.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary" id="save-product-btn"><i class="fas fa-save me-1"></i> Saqlash</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas"><i class="fas fa-times me-1"></i> Bekor qilish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Kategoriya qo‘shish uchun modal -->
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="categoryModalLabel">Yangi kategoriya qo‘shish</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="category-form">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="category-name" class="form-label">Kategoriya nomi</label>
+                            <input type="text" class="form-control" id="category-name" name="name" placeholder="Kategoriya nomini kiriting">
+                        </div>
+                        <div class="mb-3">
+                            <label for="category-image" class="form-label">Kategoriya rasmi (ixtiyoriy)</label>
+                            <input type="file" class="form-control" id="category-image" name="image">
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary" id="save-category-btn"><i class="fas fa-save me-1"></i> Saqlash</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> Bekor qilish</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript va SweetAlert2 -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function openSidebar(title, productId = null, productData = null) {
+    $('#sidebar-title').text(title);
+    $('#product-form')[0].reset();
+    $('#product-id').val(productId || '');
+    $('#save-product-btn').prop('disabled', false).text('Saqlash');
+    $('#id_warehouse').val('{{ warehouse.id }}');
+    if (productData) {
+        $('#id_name').val(productData.name);
+        $('#id_warehouse').val(productData.warehouse);
+        $('#id_category').val(productData.category || '');
+        $('#id_quantity').val(productData.quantity);
+        $('#id_minimum_quantity').val(productData.minimum_quantity);
+        $('#product-form').attr('action', '/inventory/product/edit/' + productId + '/');
+    } else {
+        $('#product-form').attr('action', '{% url 'product_create' %}');
+    }
+}
+
+$(document).ready(function() {
+    // Mahsulot qo‘shish/tahrirlash formasi
+    $('#product-form').submit(function(e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        var url = $(this).attr('action');
+        $('#save-product-btn').prop('disabled', true).text('Saqlanmoqda...');
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.status === 'success') {
+                    var product = response.product;
+                    var card = $('div[data-product-id="' + product.id + '"]');
+                    var imageSrc = product.image || 'https://via.placeholder.com/300x200.png?text=Mahsulot+Rasmi+Yok';
+                    var badge = product.quantity < product.minimum_quantity ? '<span class="badge bg-danger position-absolute top-0 end-0 m-2">Kam miqdor</span>' : '';
+                    if (card.length) {
+                        // Tahrirlash
+                        card.html(`
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="position-relative">
+                                    <img src="${imageSrc}" class="card-img-top" alt="${product.name}" style="height: 200px; object-fit: cover;">
+                                    ${badge}
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">${product.name}</h5>
+                                    <p class="card-text mb-1"><strong>Kategoriya:</strong> ${product.category}</p>
+                                    <p class="card-text mb-1"><strong>Miqdor:</strong> ${product.quantity}</p>
+                                    <p class="card-text mb-3"><strong>Minimal miqdor:</strong> ${product.minimum_quantity}</p>
+                                    <div class="d-flex justify-content-between">
+                                        <a href="#" class="btn btn-primary btn-sm edit-product-btn" data-product-id="${product.id}" data-bs-toggle="offcanvas" data-bs-target="#productSidebar">
+                                            <i class="fas fa-edit me-1"></i> Tahrirlash
+                                        </a>
+                                        <a href="#" class="btn btn-danger btn-sm delete-product-btn" data-product-id="${product.id}">
+                                            <i class="fas fa-trash me-1"></i> O‘chirish
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    } else {
+                        // Qo‘shish
+                        $('#product-list').prepend(`
+                            <div class="col" data-product-id="${product.id}">
+                                <div class="card h-100 shadow-sm border-0">
+                                    <div class="position-relative">
+                                        <img src="${imageSrc}" class="card-img-top" alt="${product.name}" style="height: 200px; object-fit: cover;">
+                                        ${badge}
+                                    </div>
+                                    <div class="card-body">
+                                        <h5 class="card-title">${product.name}</h5>
+                                        <p class="card-text mb-1"><strong>Kategoriya:</strong> ${product.category}</p>
+                                        <p class="card-text mb-1"><strong>Miqdor:</strong> ${product.quantity}</p>
+                                        <p class="card-text mb-3"><strong>Minimal miqdor:</strong> ${product.minimum_quantity}</p>
+                                        <div class="d-flex justify-content-between">
+                                            <a href="#" class="btn btn-primary btn-sm edit-product-btn" data-product-id="${product.id}" data-bs-toggle="offcanvas" data-bs-target="#productSidebar">
+                                                <i class="fas fa-edit me-1"></i> Tahrirlash
+                                            </a>
+                                            <a href="#" class="btn btn-danger btn-sm delete-product-btn" data-product-id="${product.id}">
+                                                <i class="fas fa-trash me-1"></i> O‘chirish
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    }
+                    $('#productSidebar').offcanvas('hide');
+                    $('#product-form')[0].reset();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Muvaffaqiyat',
+                        text: response.message,
+                        position: 'top-end',
+                        timer: 2000,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        width: '300px',
+                        padding: '10px'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Xatolik',
+                        text: response.message || 'Mahsulot qo‘shishda xatolik yuz berdi.',
+                        position: 'top-end',
+                        timer: 3000,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        width: '300px',
+                        padding: '10px'
+                    });
+                }
+            },
+            error: function(xhr) {
+                var errorMsg = 'Server bilan bog‘lanishda xatolik yuz berdi.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Xatolik',
+                    text: errorMsg,
+                    position: 'top-end',
+                    timer: 3000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    width: '300px',
+                    padding: '10px'
+                });
+            },
+            complete: function() {
+                $('#save-product-btn').prop('disabled', false).text('Saqlash');
+            }
+        });
+    });
+
+    // Tahrirlash tugmasi
+    $(document).on('click', '.edit-product-btn', function(e) {
+        e.preventDefault();
+        var productId = $(this).data('product-id');
+        $.ajax({
+            url: '/inventory/product/edit/' + productId + '/',
+            type: 'GET',
+            success: function(data) {
+                if (data.status === 'success') {
+                    openSidebar('Mahsulotni tahrirlash', productId, data.form);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Xatolik',
+                        text: data.message || 'Mahsulot ma’lumotlarini olishda xatolik yuz berdi.',
+                        position: 'top-end',
+                        timer: 3000,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        width: '300px',
+                        padding: '10px'
+                    });
+                }
+            },
+            error: function(xhr) {
+                var errorMsg = 'Server bilan bog‘lanishda xatolik yuz berdi.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Xatolik',
+                    text: errorMsg,
+                    position: 'top-end',
+                    timer: 3000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    width: '300px',
+                    padding: '10px'
+                });
+            }
+        });
+    });
+
+    // Mahsulot o‘chirish
+    $(document).on('click', '.delete-product-btn', function(e) {
+        e.preventDefault();
+        var productId = $(this).data('product-id');
+        Swal.fire({
+            title: 'O‘chirishni tasdiqlaysizmi?',
+            text: 'Bu mahsulotni haqiqatan ham o‘chirishni xohlaysizmi?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ha, o‘chirish',
+            cancelButtonText: 'Yo‘q, bekor qilish',
+            position: 'top-end',
+            timer: 5000,
+            timerProgressBar: true,
+            width: '300px',
+            padding: '10px'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/inventory/product/delete/' + productId + '/',
+                    type: 'POST',
+                    data: { 'csrfmiddlewaretoken': '{{ csrf_token }}' },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            $('div[data-product-id="' + response.product_id + '"]').remove();
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Muvaffaqiyat',
+                                text: response.message,
+                                position: 'top-end',
+                                timer: 2000,
+                                timerProgressBar: true,
+                                showConfirmButton: false,
+                                width: '300px',
+                                padding: '10px'
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Xatolik',
+                                text: response.message || 'Mahsulotni o‘chirishda xatolik yuz berdi.',
+                                position: 'top-end',
+                                timer: 3000,
+                                timerProgressBar: true,
+                                showConfirmButton: false,
+                                width: '300px',
+                                padding: '10px'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        var errorMsg = 'Server bilan bog‘lanishda xatolik yuz berdi.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Xatolik',
+                            text: errorMsg,
+                            position: 'top-end',
+                            timer: 3000,
+                            timerProgressBar: true,
+                            showConfirmButton: false,
+                            width: '300px',
+                            padding: '10px'
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // Kategoriya qo‘shish formasi
+    $('#category-form').submit(function(e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        $('#save-category-btn').prop('disabled', true).text('Saqlanmoqda...');
+        $.ajax({
+            url: '{% url 'category_create' %}',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.status === 'success') {
+                    var category = response.category;
+                    $('#id_category').append(`<option value="${category.id}" selected>${category.name}</option>`);
+                    $('#categoryModal').modal('hide');
+                    $('#category-form')[0].reset();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Muvaffaqiyat',
+                        text: response.message,
+                        position: 'top-end',
+                        timer: 2000,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        width: '300px',
+                        padding: '10px'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Xatolik',
+                        text: response.message || 'Kategoriya qo‘shishda xatolik yuz berdi.',
+                        position: 'top-end',
+                        timer: 3000,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        width: '300px',
+                        padding: '10px'
+                    });
+                }
+            },
+            error: function(xhr) {
+                var errorMsg = 'Server bilan bog‘lanishda xatolik yuz berdi.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Xatolik',
+                    text: errorMsg,
+                    position: 'top-end',
+                    timer: 3000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    width: '300px',
+                    padding: '10px'
+                });
+            },
+            complete: function() {
+                $('#save-category-btn').prop('disabled', false).text('Saqlash');
+            }
+        });
+    });
+});
+</script>
+
+<style>
+/* Modal va offcanvas dizayni */
+.modal-content, .offcanvas {
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header, .offcanvas-header {
+    background-color: #007bff;
+}
+
+/* Card dizayni */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.card-img-top {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.card-text {
+    font-size: 0.9rem;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
+
+/* Tugmalar dizayni */
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #b02a37;
+    border-color: #b02a37;
+}
+
+/* Pagination dizayni */
+.pagination .page-link {
+    color: #007bff;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+}
+</style>
+{% endblock %}

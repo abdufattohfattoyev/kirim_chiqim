@@ -1,0 +1,188 @@
+from django import forms
+from django.core.exceptions import ValidationError
+from django.forms import inlineformset_factory
+
+from .models import Product, Category, Incoming, Outgoing, Warehouse, IncomingItem
+
+
+class WarehouseForm(forms.ModelForm):
+    class Meta:
+        model = Warehouse
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ombor nomini kiriting'}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        existing_warehouse = Warehouse.objects.filter(name=name).exclude(id=self.instance.id if self.instance else None)
+        if existing_warehouse.exists():
+            raise forms.ValidationError("Bu nomdagi ombor allaqachon mavjud.")
+        return name
+
+class ProductForm(forms.ModelForm):
+    new_category = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Yangi kategoriya nomini kiriting'})
+    )
+    warehouse = forms.ModelChoiceField(
+        queryset=Warehouse.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True
+    )
+
+    class Meta:
+        model = Product
+        fields = ['name', 'warehouse', 'category', 'image', 'quantity', 'minimum_quantity']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mahsulot nomini kiriting'}),
+            'category': forms.Select(attrs={'class': 'form-control'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Miqdor'}),
+            'minimum_quantity': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Minimal miqdor'}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        warehouse = self.cleaned_data.get('warehouse')
+        if warehouse and Product.objects.filter(name=name, warehouse=warehouse).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("Bu nomdagi mahsulot ushbu omborda allaqachon mavjud. Iltimos, boshqa nom kiriting.")
+        return name
+
+    def clean(self):
+        cleaned_data = super().clean()
+        category = cleaned_data.get('category')
+        new_category = cleaned_data.get('new_category')
+        quantity = cleaned_data.get('quantity')
+
+        if not category and new_category:
+            try:
+                category, created = Category.objects.get_or_create(name=new_category)
+                cleaned_data['category'] = category
+            except Exception as e:
+                raise ValidationError(f"Kategoriya yaratishda xatolik: {str(e)}")
+        elif not category and not new_category:
+            raise ValidationError("Iltimos, kategoriya tanlang yoki yangi kategoriya nomini kiriting.")
+
+        if quantity is None or quantity < 0:
+            raise ValidationError("Miqdor 0 yoki undan katta bo‘lishi kerak.")
+
+        return cleaned_data
+
+
+class CategoryForm(forms.ModelForm):
+    class Meta:
+        model = Category
+        fields = ['name', 'image']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Kategoriya nomini kiriting'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        if Category.objects.filter(name=name).exists():
+            raise forms.ValidationError("Bu nomdagi kategoriya allaqachon mavjud.")
+        return name
+
+
+class IncomingForm(forms.ModelForm):
+    warehouse = forms.ModelChoiceField(
+        queryset=Warehouse.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_warehouse'}),
+        required=True
+    )
+
+    class Meta:
+        model = Incoming
+        fields = ['warehouse', 'supplier', 'date', 'total_amount', 'paid_amount', 'debt', 'note']
+        widgets = {
+            'supplier': forms.Select(attrs={'class': 'form-control'}),
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'total_amount': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+            'paid_amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'debt': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+            'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }
+
+class IncomingItemForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        warehouse = kwargs.pop('warehouse', None)  # Omborni kwargsdan olamiz
+        super().__init__(*args, **kwargs)
+        if warehouse:
+            # Faqat tanlangan omborga tegishli mahsulotlarni filtrlaymiz
+            self.fields['product'].queryset = Product.objects.filter(warehouse=warehouse)
+
+    class Meta:
+        model = IncomingItem
+        fields = ['product', 'quantity', 'price', 'total']
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-control product-select'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'total': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+        }
+
+class IncomingItemFormSet(forms.models.BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        warehouse = kwargs.pop('warehouse', None)  # Omborni formsetga uzatamiz
+        super().__init__(*args, **kwargs)
+        for form in self.forms:
+            form.warehouse = warehouse  # Har bir formaga omborni uzatamiz
+
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                if not form.cleaned_data.get('product'):
+                    raise forms.ValidationError("Mahsulot tanlanmagan.")
+                if not form.cleaned_data.get('quantity') or form.cleaned_data['quantity'] <= 0:
+                    raise forms.ValidationError("Miqdor 0 dan katta bo‘lishi kerak.")
+                product = form.cleaned_data.get('product')
+                incoming = self.instance
+                if product and incoming and product.warehouse != incoming.warehouse:
+                    raise forms.ValidationError(f"{product.name} ushbu omborga tegishli emas.")
+
+# Inline formsetni yaratish
+IncomingItemFormSetFactory = inlineformset_factory(
+    Incoming,
+    IncomingItem,
+    form=IncomingItemForm,
+    formset=IncomingItemFormSet,
+    fields=['product', 'quantity', 'price', 'total'],
+    extra=1,
+    can_delete=True
+)
+
+
+class OutgoingForm(forms.ModelForm):
+    warehouse = forms.ModelChoiceField(
+        queryset=Warehouse.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True
+    )
+
+    class Meta:
+        model = Outgoing
+        fields = ['warehouse', 'customer', 'total_amount', 'paid_amount', 'note']
+        widgets = {
+            'customer': forms.Select(attrs={'class': 'form-control'}),
+            'total_amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'paid_amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }
+
+class OutgoingItemFormSet(forms.models.BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                if not form.cleaned_data.get('product'):
+                    raise forms.ValidationError("Mahsulot tanlanmagan.")
+                if not form.cleaned_data.get('quantity') or form.cleaned_data['quantity'] <= 0:
+                    raise forms.ValidationError("Miqdor 0 dan katta bo‘lishi kerak.")
+                product = form.cleaned_data.get('product')
+                outgoing = form.instance.outgoing if form.instance else None
+                if product and outgoing and product.warehouse != outgoing.warehouse:
+                    raise forms.ValidationError(f"{product.name} ushbu omborga tegishli emas.")
+

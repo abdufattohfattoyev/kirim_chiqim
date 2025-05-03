@@ -1,0 +1,13 @@
+{% extends "index.html" %}
+{% block title %}Ta'minotchi o'chirish{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Ta'minotchi o'chirish</h2>
+    <p><strong>{{ supplier.name }}</strong> ta'minotchisini o'chirishni tasdiqlaysizmi?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">O'chirish</button>
+        <a href="{% url 'supplier_list' %}" class="btn btn-secondary">Bekor qilish</a>
+    </form>
+</div>
+{% endblock %}

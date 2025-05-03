@@ -1,0 +1,12 @@
+{% extends "index.html" %}
+{% block content %}
+<div class="container">
+    <h2>O'chirishni tasdiqlash</h2>
+    <p>"{{ product.name }}" mahsulotini o'chirishni xohlaysizmi?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+        <a href="{% url 'ombor_list' %}" class="btn btn-secondary">Yo'q, bekor qilish</a>
+    </form>
+</div>
+{% endblock %}

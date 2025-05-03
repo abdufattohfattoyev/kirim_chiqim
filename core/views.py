@@ -1,0 +1,79 @@
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login, logout
+from .models import User, Permission
+from .forms import UserForm, PermissionFormSet
+from django.contrib import messages
+
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect('dashboard')
+        else:
+            messages.error(request, 'Foydalanuvchi nomi yoki parol xato.')
+    return render(request, 'core/login.html')
+
+@login_required
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
+@login_required
+def dashboard_view(request):
+    return render(request, 'index.html')
+
+@login_required
+def user_list(request):
+    if not request.user.is_superuser:
+        messages.error(request, 'Faqat super admin foydalanuvchilarni boshqarishi mumkin.')
+        return redirect('dashboard')
+    users = User.objects.all()
+    return render(request, 'core/user_list.html', {'users': users})
+
+@login_required
+def user_create(request):
+    if not request.user.is_superuser:
+        messages.error(request, 'Faqat super admin foydalanuvchi qo‘shishi mumkin.')
+        return redirect('dashboard')
+    if request.method == 'POST':
+        form = UserForm(request.POST)
+        formset = PermissionFormSet(request.POST, instance=form.instance)
+        if form.is_valid() and formset.is_valid():
+            user = form.save(commit=False)
+            user.set_password(form.cleaned_data['password'])
+            user.save()
+            formset.instance = user
+            formset.save()
+            messages.success(request, 'Foydalanuvchi muvaffaqiyatli qo‘shildi.')
+            return redirect('user_list')
+    else:
+        form = UserForm()
+        formset = PermissionFormSet()
+    return render(request, 'core/user_form.html', {'form': form, 'formset': formset})
+
+@login_required
+def user_edit(request, user_id):
+    if not request.user.is_superuser:
+        messages.error(request, 'Faqat super admin foydalanuvchilarni tahrirlashi mumkin.')
+        return redirect('dashboard')
+    user = User.objects.get(id=user_id)
+    if request.method == 'POST':
+        form = UserForm(request.POST, instance=user)
+        formset = PermissionFormSet(request.POST, instance=user)
+        if form.is_valid() and formset.is_valid():
+            user = form.save(commit=False)
+            if form.cleaned_data['password']:
+                user.set_password(form.cleaned_data['password'])
+            user.save()
+            formset.save()
+            messages.success(request, 'Foydalanuvchi muvaffaqiyatli yangilandi.')
+            return redirect('user_list')
+    else:
+        form = UserForm(instance=user)
+        formset = PermissionFormSet(instance=user)
+    return render(request, 'core/user_form.html', {'form': form, 'formset': formset})
