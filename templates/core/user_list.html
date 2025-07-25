@@ -1,71 +1,150 @@
-
-{% extends 'base.html' %}
+{% extends 'index.html' %}
 {% block title %}Foydalanuvchilar{% endblock %}
 {% block content %}
-<style>
-    .main-content {
-        margin-left: 250px;
-        padding: 20px;
-    }
-    .table {
-        width: 100%;
-        border-collapse: collapse;
-        background-color: white;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .table th, .table td {
-        padding: 12px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-    }
-    .table th {
-        background-color: #2c3e50;
-        color: white;
-    }
-    .table tr:hover {
-        background-color: #f5f5f5;
-    }
-    .btn {
-        display: inline-block;
-        padding: 10px 20px;
-        background-color: #2c3e50;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        margin-bottom: 20px;
-    }
-    .btn:hover {
-        background-color: #34495e;
-    }
-</style>
-<div class="main-content">
-    <h2>Foydalanuvchilar</h2>
-    <a href="{% url 'user_create' %}" class="btn">Yangi foydalanuvchi qo'shish</a>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Foydalanuvchi nomi</th>
-                <th>Rol</th>
-                <th>Admin</th>
-                <th>Super Admin</th>
-                <th>Amallar</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for user in users %}
-            <tr>
-                <td>{{ user.username }}</td>
-                <td>{{ user.get_role_display }}</td>
-                <td>{{ user.is_staff|yesno:"Ha,Yo'q" }}</td>
-                <td>{{ user.is_superuser|yesno:"Ha,Yo'q" }}</td>
-                <td><a href="{% url 'user_edit' user.id %}" class="btn">Tahrirlash</a></td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5">Foydalanuvchilar mavjud emas</td>
-            </tr>
+<div class="container mt-5">
+    <h2 class="mb-4">Foydalanuvchilar ro'yxati</h2>
+
+    {% if messages %}
+        <div class="alert-container mb-3">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    {% endif %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Qidiruv</label>
+                    <input type="text" name="search" id="search" class="form-control" value="{{ search_query }}" placeholder="Foydalanuvchi nomini kiriting...">
+                </div>
+                <div class="col-md-3">
+                    <label for="role" class="form-label">Rol</label>
+                    <select name="role" id="role" class="form-control">
+                        <option value="">Barcha rollar</option>
+                        {% for role_value, role_label in role_choices %}
+                            <option value="{{ role_value }}" {% if role_filter == role_value %}selected{% endif %}>{{ role_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="is_active" class="form-label">Holat</label>
+                    <select name="is_active" id="is_active" class="form-control">
+                        <option value="">Barchasi</option>
+                        <option value="true" {% if request.GET.is_active == 'true' %}selected{% endif %}>Faol</option>
+                        <option value="false" {% if request.GET.is_active == 'false' %}selected{% endif %}>Nofaol</option>
+                    </select>
+                </div>
+                <div class="col-md-2 align-self-end">
+                    <button type="submit" class="btn btn-primary w-100">Qidirish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title">Foydalanuvchilar ({{ total_count }})</h5>
+                <a href="{% url 'user_create' %}" class="btn btn-success">Yangi foydalanuvchi qo'shish</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Foydalanuvchi nomi</th>
+                            <th>Ism</th>
+                            <th>Familiya</th>
+                            <th>Rol</th>
+                            <th>Xodim</th>
+                            <th>Faol</th>
+                            <th>Amallar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in page_obj %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.first_name|default:'-' }}</td>
+                                <td>{{ user.last_name|default:'-' }}</td>
+                                <td>{{ user.get_role_display }}</td>
+                                <td>{{ user.is_staff|yesno:"Ha,Yo'q" }}</td>
+                                <td>{{ user.is_active|yesno:"Ha,Yo'q" }}</td>
+                                <td>
+                                    <a href="{% url 'user_edit' user.id %}" class="btn btn-sm btn-primary">Tahrirlash</a>
+                                    <a href="{% url 'user_permissions' user.id %}" class="btn btn-sm btn-info">Ruxsatlar</a>
+                                    {% if not user.is_superuser and user.id != request.user.id %}
+                                        <button class="btn btn-sm btn-danger delete-user" data-user-id="{{ user.id }}" data-user-name="{{ user.username }}">O'chirish</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center">Foydalanuvchilar mavjud emas</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if page_obj.has_other_pages %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center mt-3">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}">Oldingi</a>
+                            </li>
+                        {% endif %}
+                        {% for num in page_obj.paginator.page_range %}
+                            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endfor %}
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}">Keyingi</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Delete user with AJAX
+        document.querySelectorAll('.delete-user').forEach(button => {
+            button.addEventListener('click', function () {
+                const userId = this.getAttribute('data-user-id');
+                const userName = this.getAttribute('data-user-name');
+                if (confirm(`Foydalanuvchi "${userName}" ni o'chirishni xohlaysizmi?`)) {
+                    fetch(`/users/delete/${userId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert(data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('Xatolik yuz berdi: ' + error);
+                    });
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

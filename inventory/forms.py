@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
-from .models import Product, Category, Incoming, Outgoing, Warehouse, IncomingItem
+from .models import Product, Category, Incoming, Outgoing, Warehouse, IncomingItem, OutgoingItem
 
 
 class WarehouseForm(forms.ModelForm):
@@ -19,6 +19,7 @@ class WarehouseForm(forms.ModelForm):
         if existing_warehouse.exists():
             raise forms.ValidationError("Bu nomdagi ombor allaqachon mavjud.")
         return name
+
 
 class ProductForm(forms.ModelForm):
     new_category = forms.CharField(
@@ -65,7 +66,7 @@ class ProductForm(forms.ModelForm):
             raise ValidationError("Iltimos, kategoriya tanlang yoki yangi kategoriya nomini kiriting.")
 
         if quantity is None or quantity < 0:
-            raise ValidationError("Miqdor 0 yoki undan katta bo‘lishi kerak.")
+            raise ValidationError("Miqdor 0 yoki undan katta bo'lishi kerak.")
 
         return cleaned_data
 
@@ -105,6 +106,7 @@ class IncomingForm(forms.ModelForm):
             'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
         }
 
+
 class IncomingItemForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         warehouse = kwargs.pop('warehouse', None)
@@ -122,6 +124,7 @@ class IncomingItemForm(forms.ModelForm):
             'total': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
         }
 
+
 class IncomingItemFormSet(forms.models.BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
         self.warehouse = kwargs.pop('warehouse', None)
@@ -136,7 +139,7 @@ class IncomingItemFormSet(forms.models.BaseInlineFormSet):
                 if not form.cleaned_data.get('product'):
                     raise forms.ValidationError("Mahsulot tanlanmagan.")
                 if not form.cleaned_data.get('quantity') or form.cleaned_data['quantity'] <= 0:
-                    raise forms.ValidationError("Miqdor 0 dan katta bo‘lishi kerak.")
+                    raise forms.ValidationError("Miqdor 0 dan katta bo'lishi kerak.")
 
                 # Agar self.instance hali saqlanmagan bo'lsa, warehouse ni formdan olish
                 if self.instance and not self.instance.pk:
@@ -148,6 +151,7 @@ class IncomingItemFormSet(forms.models.BaseInlineFormSet):
                 if product and warehouse and product.warehouse != warehouse:
                     raise forms.ValidationError(f"{product.name} ushbu omborga tegishli emas.")
 
+
 IncomingItemFormSetFactory = inlineformset_factory(
     Incoming,
     IncomingItem,
@@ -158,6 +162,7 @@ IncomingItemFormSetFactory = inlineformset_factory(
     can_delete=True
 )
 
+
 class OutgoingForm(forms.ModelForm):
     warehouse = forms.ModelChoiceField(
         queryset=Warehouse.objects.all(),
@@ -167,25 +172,88 @@ class OutgoingForm(forms.ModelForm):
 
     class Meta:
         model = Outgoing
-        fields = ['warehouse', 'customer', 'total_amount', 'paid_amount', 'note']
+        fields = ['warehouse', 'customer', 'date', 'total_amount', 'paid_amount', 'note']
         widgets = {
             'customer': forms.Select(attrs={'class': 'form-control'}),
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'total_amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'paid_amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
         }
 
-class OutgoingItemFormSet(forms.models.BaseInlineFormSet):
+
+class OutgoingItemForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        self.warehouse = kwargs.pop('warehouse', None)
+        super().__init__(*args, **kwargs)
+        if self.warehouse:
+            self.fields['product'].queryset = Product.objects.filter(warehouse=self.warehouse)
+
+    class Meta:
+        model = OutgoingItem
+        fields = ['product', 'quantity', 'price']
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+
+class BaseOutgoingItemFormSet(forms.models.BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        self.warehouse = kwargs.pop('warehouse', None)
+        super().__init__(*args, **kwargs)
+        # Har bir form uchun warehouse ni o'rnatish
+        for form in self.forms:
+            if hasattr(form, 'fields'):
+                if self.warehouse:
+                    form.fields['product'].queryset = Product.objects.filter(warehouse=self.warehouse)
+
+    def _construct_form(self, i, **kwargs):
+        # Yangi form yaratilganda warehouse ni uzatish
+        kwargs['warehouse'] = self.warehouse
+        return super()._construct_form(i, **kwargs)
+
     def clean(self):
         super().clean()
+
+        if not self.is_valid():
+            return
+
+        # Kamida bitta form bo'lishini tekshirish
+        valid_forms_count = 0
         for form in self.forms:
             if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                if not form.cleaned_data.get('product'):
-                    raise forms.ValidationError("Mahsulot tanlanmagan.")
-                if not form.cleaned_data.get('quantity') or form.cleaned_data['quantity'] <= 0:
-                    raise forms.ValidationError("Miqdor 0 dan katta bo‘lishi kerak.")
-                product = form.cleaned_data.get('product')
-                outgoing = form.instance.outgoing if form.instance else None
-                if product and outgoing and product.warehouse != outgoing.warehouse:
-                    raise forms.ValidationError(f"{product.name} ushbu omborga tegishli emas.")
+                valid_forms_count += 1
 
+                product = form.cleaned_data.get('product')
+                quantity = form.cleaned_data.get('quantity')
+
+                if not product:
+                    raise forms.ValidationError("Mahsulot tanlanmagan.")
+
+                if not quantity or quantity <= 0:
+                    raise forms.ValidationError("Miqdor 0 dan katta bo'lishi kerak.")
+
+                # Ombordagi mavjud miqdorni tekshirish
+                if product and quantity > product.quantity:
+                    raise forms.ValidationError(
+                        f"{product.name} uchun yetarli miqdor mavjud emas. "
+                        f"Mavjud: {product.quantity}, so'ralgan: {quantity}"
+                    )
+
+        if valid_forms_count == 0:
+            raise forms.ValidationError("Kamida bitta mahsulot kiritilishi kerak.")
+
+
+# Inline formset yaratish
+OutgoingItemFormSet = inlineformset_factory(
+    Outgoing,
+    OutgoingItem,
+    form=OutgoingItemForm,
+    formset=BaseOutgoingItemFormSet,
+    extra=1,
+    can_delete=True,
+    min_num=0,  # min_num ni 0 ga o'zgartiramiz
+    validate_min=False  # validate_min ni False qilamiz
+)

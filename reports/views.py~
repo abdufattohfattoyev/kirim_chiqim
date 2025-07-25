@@ -41,6 +41,10 @@ def report_view(request):
         total_debt=Sum('outgoing__debt') + Sum('initial_debt')
     ).values('name', 'total_debt')
 
+    # Jami qarzdorlik
+    total_supplier_debt = supplier_debt_data.aggregate(total=Sum('total_debt'))['total'] or 0
+    total_customer_debt = customer_debt_data.aggregate(total=Sum('total_debt'))['total'] or 0
+
     # Kategoriyalar bo'yicha mahsulotlar
     category_data = Category.objects.annotate(
         total_quantity=Sum('product__quantity')
@@ -51,6 +55,8 @@ def report_view(request):
         .values('date') \
         .annotate(total_profit=Sum('profit')) \
         .order_by('date')
+
+    total_profit = profit_data.aggregate(total=Sum('total_profit'))['total'] or 0
 
     # To'lovlar
     supplier_payments = SupplierPayment.objects.filter(date__range=[start_date, end_date]) \
@@ -67,8 +73,10 @@ def report_view(request):
         'profit_data': list(profit_data),
         'supplier_payments': supplier_payments,
         'customer_payments': customer_payments,
+        'total_supplier_debt': total_supplier_debt,
+        'total_customer_debt': total_customer_debt,
+        'total_profit': total_profit,
         'start_date': start_date.strftime('%Y-%m-%d'),
         'end_date': end_date.strftime('%Y-%m-%d'),
     }
     return render(request, 'reports/report.html', context)
-

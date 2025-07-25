@@ -1,0 +1,121 @@
+{% extends "index.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> {{ title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-warning"></i> Ogohlantirish!</h5>
+                        <p>Siz ushbu chiqimni butunlay o'chirmoqchisiz. Bu amal orqaga qaytarilmaydi!</p>
+                    </div>
+
+                    <!-- Chiqim ma'lumotlari -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th width="30%">Raqam:</th>
+                                    <td>#{{ outgoing.id }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Sana:</th>
+                                    <td>{{ outgoing.date|date:"d.m.Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Ombor:</th>
+                                    <td>{{ outgoing.warehouse.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Xaridor:</th>
+                                    <td>{{ outgoing.customer.name|default:"Noma'lum xaridor" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th width="30%">Jami summa:</th>
+                                    <td class="text-success fw-bold">{{ outgoing.total_amount|floatformat:2 }} so'm</td>
+                                </tr>
+                                <tr>
+                                    <th>To'langan:</th>
+                                    <td>{{ outgoing.paid_amount|floatformat:2 }} so'm</td>
+                                </tr>
+                                <tr>
+                                    <th>Qarz:</th>
+                                    <td class="{% if outgoing.debt > 0 %}text-danger{% else %}text-success{% endif %}">
+                                        {{ outgoing.debt|floatformat:2 }} so'm
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Foyda:</th>
+                                    <td class="text-info">{{ outgoing.profit|floatformat:2 }} so'm</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Mahsulotlar ro'yxati -->
+                    <h6>O'chiriladigan mahsulotlar:</h6>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Mahsulot</th>
+                                    <th>Miqdor</th>
+                                    <th>Narx</th>
+                                    <th>Jami</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in outgoing.items.all %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        {% if item.product %}
+                                            {{ item.product.name }}
+                                        {% else %}
+                                            <em class="text-muted">Mahsulot o'chirilgan</em>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>{{ item.price|floatformat:2 }}</td>
+                                    <td>{{ item.total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Eslatma:</strong> Chiqimni o'chirganda, barcha bog'langan mahsulotlar miqdori avtomatik ravishda omborga qaytariladi.
+                    </div>
+
+                    <!-- Tasdiqlash formi -->
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'chiqim_detail' outgoing.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Bekor qilish
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Ha, o'chirish
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

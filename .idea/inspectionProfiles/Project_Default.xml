@@ -4,7 +4,7 @@
     <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ignoredPackages">
         <value>
-          <list size="65">
+          <list size="86">
             <item index="0" class="java.lang.String" itemvalue="environs" />
             <item index="1" class="java.lang.String" itemvalue="async-timeout" />
             <item index="2" class="java.lang.String" itemvalue="Babel" />
@@ -70,6 +70,27 @@
             <item index="62" class="java.lang.String" itemvalue="soupsieve" />
             <item index="63" class="java.lang.String" itemvalue="setuptools" />
             <item index="64" class="java.lang.String" itemvalue="drf-yasg" />
+            <item index="65" class="java.lang.String" itemvalue="httpx" />
+            <item index="66" class="java.lang.String" itemvalue="django-celery-beat" />
+            <item index="67" class="java.lang.String" itemvalue="botocore" />
+            <item index="68" class="java.lang.String" itemvalue="pyhanko-certvalidator" />
+            <item index="69" class="java.lang.String" itemvalue="pyHanko" />
+            <item index="70" class="java.lang.String" itemvalue="xhtml2pdf" />
+            <item index="71" class="java.lang.String" itemvalue="cryptography" />
+            <item index="72" class="java.lang.String" itemvalue="django-storages" />
+            <item index="73" class="java.lang.String" itemvalue="kombu" />
+            <item index="74" class="java.lang.String" itemvalue="click-didyoumean" />
+            <item index="75" class="java.lang.String" itemvalue="python-telegram-bot" />
+            <item index="76" class="java.lang.String" itemvalue="boto3" />
+            <item index="77" class="java.lang.String" itemvalue="celery" />
+            <item index="78" class="java.lang.String" itemvalue="django-dbbackup" />
+            <item index="79" class="java.lang.String" itemvalue="s3transfer" />
+            <item index="80" class="java.lang.String" itemvalue="django-redis" />
+            <item index="81" class="java.lang.String" itemvalue="django-timezone-field" />
+            <item index="82" class="java.lang.String" itemvalue="click-repl" />
+            <item index="83" class="java.lang.String" itemvalue="django-phonenumber-field" />
+            <item index="84" class="java.lang.String" itemvalue="click-plugins" />
+            <item index="85" class="java.lang.String" itemvalue="django-cors-headers" />
           </list>
         </value>
       </option>

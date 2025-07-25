@@ -2,84 +2,592 @@
 {% block title %}Yangi ta'minotchi{% endblock %}
 {% block content %}
 <style>
-    .main-content {
-        margin-left: 250px;
-        padding: 20px;
+    /* Mobile-first responsive styles for New Supplier page */
+    .supplier-form-container {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 0;
     }
-    .form-container {
-        max-width: 600px;
-        background-color: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+
+    .form-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        color: white;
+        padding: 1.5rem;
+        border-radius: 0.75rem 0.75rem 0 0;
+        margin-bottom: 0;
+        text-align: center;
     }
+
+    .form-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .form-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+
+    .form-body {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 0 0 0.75rem 0.75rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
     .form-group {
-        margin-bottom: 15px;
+        margin-bottom: 1.5rem;
+        position: relative;
     }
+
     .form-group label {
         display: block;
-        margin-bottom: 5px;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--text-color);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    .form-group input {
+
+    .form-group label i {
+        color: var(--primary-color);
+        width: 1rem;
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"] {
         width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: #f9fafb;
+        color: var(--text-color);
     }
-    .form-group input[type="submit"] {
-        background-color: #2c3e50;
+
+    .form-group input[type="text"]:focus,
+    .form-group input[type="number"]:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        background: white;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .form-group input[type="text"]:hover,
+    .form-group input[type="number"]:hover {
+        border-color: #d1d5db;
+        background: white;
+    }
+
+    .input-hint {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .input-hint i {
+        font-size: 0.7rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-direction: column;
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
         color: white;
         border: none;
-        padding: 10px;
+        padding: 1rem 2rem;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
         cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        position: relative;
+        overflow: hidden;
     }
-    .form-group input[type="submit"]:hover {
-        background-color: #34495e;
+
+    .btn-submit::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
     }
+
+    .btn-submit:hover::before {
+        left: 100%;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-submit:active {
+        transform: translateY(0);
+    }
+
+    .btn-cancel {
+        background: #6b7280;
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-cancel:hover {
+        background: #4b5563;
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
     .errorlist {
-        color: red;
+        color: var(--danger-color);
         list-style: none;
         padding: 0;
-        margin: 5px 0 0 0;
+        margin: 0.5rem 0 0 0;
+        font-size: 0.85rem;
     }
+
     .errorlist li {
-        font-size: 14px;
+        background: rgba(239, 68, 68, 0.1);
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        border-left: 3px solid var(--danger-color);
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        animation: shake 0.5s ease-in-out;
+    }
+
+    .errorlist li::before {
+        content: "⚠️";
+        font-size: 0.8rem;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-3px); }
+        75% { transform: translateX(3px); }
+    }
+
+    .loading-state .btn-submit {
+        opacity: 0.7;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .loading-state .btn-submit::after {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        margin: auto;
+        border: 2px solid transparent;
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Tablet styles */
+    @media (min-width: 768px) {
+        .supplier-form-container {
+            max-width: 600px;
+            padding: 0 1rem;
+        }
+
+        .form-header {
+            padding: 2rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.75rem;
+        }
+
+        .form-body {
+            padding: 2rem;
+        }
+
+        .form-actions {
+            flex-direction: row;
+            justify-content: center;
+        }
+
+        .btn-submit,
+        .btn-cancel {
+            flex: 1;
+            max-width: 200px;
+        }
+    }
+
+    /* Desktop styles */
+    @media (min-width: 1024px) {
+        .supplier-form-container {
+            max-width: 700px;
+        }
+
+        .form-header h2 {
+            font-size: 2rem;
+        }
+
+        .form-body {
+            padding: 2.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"] {
+            padding: 1rem 1.25rem;
+            font-size: 1.1rem;
+        }
+    }
+
+    /* Animation classes */
+    .fade-in {
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    .slide-up {
+        animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Focus states for accessibility */
+    .form-group input:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+
+    .btn-submit:focus,
+    .btn-cancel:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+        .form-group input[type="text"],
+        .form-group input[type="number"] {
+            border-width: 3px;
+        }
+
+        .btn-submit,
+        .btn-cancel {
+            border: 2px solid currentColor;
+        }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .btn-submit,
+        .btn-cancel {
+            transition: none;
+        }
+
+        .fade-in,
+        .slide-up {
+            animation: none;
+        }
     }
 </style>
-<div class="main-content">
-    <h2>Yangi ta'minotchi</h2>
-    <div class="form-container">
-        <form method="post">
-            {% csrf_token %}
-            <div class="form-group">
-                {{ form.name.label_tag }}
-                {{ form.name }}
-                {{ form.name.errors }}
-            </div>
-            <div class="form-group">
-                {{ form.phone_number.label_tag }}
-                {{ form.phone_number }}
-                <small style="color: #666;">Masalan: +998937997004 (+ dan keyin 12 ta raqam)</small>
-                {{ form.phone_number.errors }}
-            </div>
-            <div class="form-group">
-                {{ form.initial_debt.label_tag }}
-                {{ form.initial_debt }}
-                {{ form.initial_debt.errors }}
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Saqlash">
-            </div>
-        </form>
+
+<div class="supplier-form-container fade-in">
+    <div class="card">
+        <div class="form-header">
+            <h2>
+                <i class="fas fa-user-plus"></i>
+                Yangi Ta'minotchi
+            </h2>
+            <p>Ta'minotchi ma'lumotlarini to'ldiring</p>
+        </div>
+
+        <div class="form-body">
+            <form method="post" id="supplierForm" class="slide-up">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="{{ form.name.id_for_label }}">
+                        <i class="fas fa-user"></i>
+                        {{ form.name.label }}
+                    </label>
+                    <div class="input-wrapper">
+                        {{ form.name }}
+                    </div>
+                    {% if form.name.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.name.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.phone_number.id_for_label }}">
+                        <i class="fas fa-phone"></i>
+                        {{ form.phone_number.label }}
+                    </label>
+                    <div class="input-wrapper">
+                        {{ form.phone_number }}
+                    </div>
+                    <div class="input-hint">
+                        <i class="fas fa-info-circle"></i>
+                        Masalan: +998937997004 (+ dan keyin 12 ta raqam)
+                    </div>
+                    {% if form.phone_number.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.phone_number.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.initial_debt.id_for_label }}">
+                        <i class="fas fa-money-bill-wave"></i>
+                        {{ form.initial_debt.label }}
+                    </label>
+                    <div class="input-wrapper">
+                        {{ form.initial_debt }}
+                    </div>
+                    {% if form.initial_debt.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.initial_debt.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-save"></i>
+                        <span>Saqlash</span>
+                    </button>
+                    <a href="{% url 'supplier_list' %}" class="btn-cancel">
+                        <i class="fas fa-times"></i>
+                        <span>Bekor qilish</span>
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
-<!-- Inputmask kutubxonasini qo'shish -->
+<!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/inputmask/5.0.6/jquery.inputmask.min.js"></script>
 <script>
     $(document).ready(function(){
-        $("#id_phone_number").inputmask("+999999999999");  // + dan keyin 12 ta raqam
+        // Phone number input mask
+        $("#id_phone_number").inputmask("+999999999999");
+
+        // Form submission with loading state
+        $('#supplierForm').on('submit', function(e) {
+            const form = $(this);
+            const submitBtn = form.find('.btn-submit');
+
+            // Add loading state
+            form.addClass('loading-state');
+            submitBtn.find('span').text('Saqlanmoqda...');
+
+            // Prevent double submission
+            submitBtn.prop('disabled', true);
+
+            // Remove loading state after timeout (fallback)
+            setTimeout(() => {
+                form.removeClass('loading-state');
+                submitBtn.find('span').text('Saqlash');
+                submitBtn.prop('disabled', false);
+            }, 10000);
+        });
+
+        // Enhanced input interactions
+        $('input[type="text"], input[type="number"]').on('focus', function() {
+            $(this).closest('.form-group').addClass('focused');
+        }).on('blur', function() {
+            $(this).closest('.form-group').removeClass('focused');
+        });
+
+        // Real-time validation feedback
+        $('input[type="text"], input[type="number"]').on('input', function() {
+            const input = $(this);
+            const formGroup = input.closest('.form-group');
+
+            // Remove error state on input
+            formGroup.find('.errorlist').fadeOut(300);
+
+            // Add visual feedback for filled inputs
+            if (input.val().length > 0) {
+                formGroup.addClass('has-content');
+            } else {
+                formGroup.removeClass('has-content');
+            }
+        });
+
+        // Initialize content state
+        $('input[type="text"], input[type="number"]').each(function() {
+            if ($(this).val().length > 0) {
+                $(this).closest('.form-group').addClass('has-content');
+            }
+        });
+
+        // Auto-focus first input
+        $('input[type="text"]:first').focus();
+
+        // Keyboard shortcuts
+        $(document).on('keydown', function(e) {
+            // Ctrl/Cmd + S to save
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                $('#supplierForm').submit();
+            }
+
+            // Escape to cancel
+            if (e.key === 'Escape') {
+                window.location.href = "{% url 'supplier_list' %}";
+            }
+        });
+
+        // Touch device optimizations
+        if ('ontouchstart' in window) {
+            // Add touch-friendly classes
+            $('input, button, a').addClass('touch-friendly');
+
+            // Prevent zoom on input focus for iOS
+            $('input[type="text"], input[type="number"]').attr('autocomplete', 'off');
+        }
+
+        // Form validation enhancement
+        $('#supplierForm').on('submit', function(e) {
+            let isValid = true;
+            const requiredFields = $(this).find('input[required]');
+
+            requiredFields.each(function() {
+                const input = $(this);
+                const value = input.val().trim();
+
+                if (!value) {
+                    isValid = false;
+                    input.closest('.form-group').addClass('error');
+                    input.focus();
+                    return false;
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                // Show error message
+                if (!$('.error-message').length) {
+                    $('.form-body').prepend(`
+                        <div class="alert alert-danger error-message fade-in">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Iltimos, barcha majburiy maydonlarni to'ldiring.
+                        </div>
+                    `);
+                }
+            }
+        });
+
+        // Remove error states on input
+        $('input').on('input', function() {
+            $(this).closest('.form-group').removeClass('error');
+            $('.error-message').fadeOut(300, function() {
+                $(this).remove();
+            });
+        });
     });
+
+    // Toggle sidebar function (if not defined in index.html)
+    if (typeof toggleSidebar === 'undefined') {
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const mainContent = document.querySelector('.main-content');
+
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+
+            if (window.innerWidth >= 1024) {
+                mainContent.classList.toggle('shifted');
+            }
+        }
+    }
 </script>
 {% endblock %}
+

@@ -1,0 +1,362 @@
+{% extends "index.html" %}
+{% block title %}Yangi ta'minotchi{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div class="page-header">
+        <h1 class="page-title">Yangi Ta'minotchi</h1>
+        <div class="page-actions">
+            <a href="{% url 'supplier_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Orqaga
+            </a>
+        </div>
+    </div>
+
+    <div class="content-card slide-up">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-user-plus"></i>
+                Ta'minotchi Ma'lumotlari
+            </h3>
+        </div>
+        <div class="card-body">
+            <form method="post" id="supplierForm" class="supplier-form">
+                {% csrf_token %}
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">
+                            <i class="fas fa-user"></i>
+                            {{ form.name.label }}
+                        </label>
+                        <div class="input-wrapper">
+                            {{ form.name }}
+                            <div class="input-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div>
+                        {% if form.name.errors %}
+                            <div class="error-messages">
+                                {% for error in form.name.errors %}
+                                    <div class="error-message">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">
+                            <i class="fas fa-phone"></i>
+                            {{ form.phone_number.label }}
+                        </label>
+                        <div class="input-wrapper">
+                            {{ form.phone_number }}
+                            <div class="input-icon">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                        </div>
+                        <div class="input-hint">
+                            <i class="fas fa-info-circle"></i>
+                            Masalan: +998937997004 (+ dan keyin 12 ta raqam)
+                        </div>
+                        {% if form.phone_number.errors %}
+                            <div class="error-messages">
+                                {% for error in form.phone_number.errors %}
+                                    <div class="error-message">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.initial_debt.id_for_label }}" class="form-label">
+                            <i class="fas fa-money-bill-wave"></i>
+                            {{ form.initial_debt.label }}
+                        </label>
+                        <div class="input-wrapper">
+                            {{ form.initial_debt }}
+                            <div class="input-icon">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                        </div>
+                        {% if form.initial_debt.errors %}
+                            <div class="error-messages">
+                                {% for error in form.initial_debt.errors %}
+                                    <div class="error-message">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i>
+                        <span class="btn-text">Saqlash</span>
+                        <div class="btn-loading" style="display: none;">
+                            <div class="loading"></div>
+                        </div>
+                    </button>
+                    <a href="{% url 'supplier_list' %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times"></i>
+                        Bekor qilish
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .supplier-form {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .form-grid {
+        display: grid;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        position: relative;
+    }
+
+    .form-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+        font-size: 0.95rem;
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"] {
+        width: 100%;
+        padding: 1rem 1rem 1rem 3rem;
+        border: 2px solid var(--border-color);
+        border-radius: 0.75rem;
+        font-size: 1rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .form-group input[type="text"]:focus,
+    .form-group input[type="number"]:focus {
+        outline: none;
+        border-color: var(--sidebar-active);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        transition: color 0.3s ease;
+        pointer-events: none;
+    }
+
+    .form-group:focus-within .input-icon {
+        color: var(--sidebar-active);
+    }
+
+    .input-hint {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+    }
+
+    .error-messages {
+        margin-top: 0.75rem;
+    }
+
+    .error-message {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: rgba(245, 101, 101, 0.1);
+        border: 1px solid var(--danger-color);
+        border-radius: 0.5rem;
+        color: var(--danger-color);
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+        animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-lg {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        min-width: 150px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .form-loading .btn-text {
+        opacity: 0;
+    }
+
+    .form-loading .btn-loading {
+        display: block !important;
+    }
+
+    .form-loading .btn {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .supplier-form {
+            max-width: 100%;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .btn-lg {
+            width: 100%;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+        }
+    }
+
+    /* Animation for form elements */
+    .form-group {
+        animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        animation-fill-mode: both;
+    }
+
+    .form-group:nth-child(1) { animation-delay: 0.1s; }
+    .form-group:nth-child(2) { animation-delay: 0.2s; }
+    .form-group:nth-child(3) { animation-delay: 0.3s; }
+
+    .form-actions {
+        animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        animation-delay: 0.4s;
+        animation-fill-mode: both;
+    }
+</style>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/inputmask/5.0.6/jquery.inputmask.min.js"></script>
+<script>
+    $(document).ready(function(){
+        // Phone number input mask
+        $("#id_phone_number").inputmask("+999999999999");
+
+        // Form submission with loading state
+        $('#supplierForm').on('submit', function(e) {
+            const form = $(this);
+            const submitBtn = form.find('button[type="submit"]');
+
+            // Add loading state
+            form.addClass('form-loading');
+            submitBtn.prop('disabled', true);
+
+            // Remove loading state after 10 seconds (fallback)
+            setTimeout(() => {
+                form.removeClass('form-loading');
+                submitBtn.prop('disabled', false);
+            }, 10000);
+        });
+
+        // Enhanced input interactions
+        $('input[type="text"], input[type="number"]').on('focus', function() {
+            $(this).closest('.form-group').addClass('focused');
+        }).on('blur', function() {
+            $(this).closest('.form-group').removeClass('focused');
+        });
+
+        // Real-time validation feedback
+        $('input[type="text"], input[type="number"]').on('input', function() {
+            const input = $(this);
+            const formGroup = input.closest('.form-group');
+
+            // Remove previous error states
+            formGroup.find('.error-message').removeClass('show');
+
+            // Add has-content class for styling
+            if (input.val().length > 0) {
+                formGroup.addClass('has-content');
+            } else {
+                formGroup.removeClass('has-content');
+            }
+        });
+
+        // Initialize content state
+        $('input[type="text"], input[type="number"]').each(function() {
+            if ($(this).val().length > 0) {
+                $(this).closest('.form-group').addClass('has-content');
+            }
+        });
+
+        // Auto-focus first input
+        $('input[type="text"]:first').focus();
+
+        // Keyboard shortcuts
+        $(document).on('keydown', function(e) {
+            // Ctrl/Cmd + S to save
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                $('#supplierForm').submit();
+            }
+
+            // Escape to cancel
+            if (e.key === 'Escape') {
+                window.location.href = "{% url 'supplier_list' %}";
+            }
+        });
+    });
+</script>
+{% endblock %}
+

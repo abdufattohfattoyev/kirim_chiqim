@@ -25,10 +25,8 @@ SECRET_KEY = 'django-insecure-8z-m^i3sj7a!ybo24)gmpp3iv+%^e67ht+54es2=+qoq0zac&p
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+ALLOWED_HOSTS = []
 
-ALLOWED_HOSTS = ["*"]
-
-CSRF_TRUSTED_ORIGINS = ['http://147.93.130.94:9090']
 
 # Application definition
 
@@ -43,6 +41,7 @@ INSTALLED_APPS = [
     'inventory',
     'reports',
     'partners',
+    'security',
 ]
 
 MIDDLEWARE = [
@@ -54,7 +53,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.PermissionMiddleware',
+    'security.middleware.ContentSecurityPolicyMiddleware',
 ]
+
 
 
 ROOT_URLCONF = 'config.urls'

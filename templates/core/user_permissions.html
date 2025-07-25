@@ -1,0 +1,32 @@
+{% extends 'index.html' %}
+{% block title %}Foydalanuvchi ruxsatlari{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>{{ user.username }} uchun ruxsatlar</h2>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if permissions %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Menyu</th>
+                            <th>Ruxsat turi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for perm in permissions %}
+                            <tr>
+                                <td>{{ perm.get_menu_display }}</td>
+                                <td>{{ perm.get_permission_type_display }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Bu foydalanuvchi uchun ruxsatlar mavjud emas.</p>
+            {% endif %}
+            <a href="{% url 'user_list' %}" class="btn btn-primary mt-3">Orqaga</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

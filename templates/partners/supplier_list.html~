@@ -1,178 +1,742 @@
 {% extends "index.html" %}
+{% block title %}Ta'minotchilar{% endblock %}
 {% block content %}
-<div class="container-fluid py-4">
-    <h2 class="mb-4 text-center">Ta'minotchilar</h2>
-
-    <!-- Tugmalar va qidiruv formasi -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-        <div class="mb-2">
-            <a href="#" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#supplierModal" onclick="openSupplierModal('Yangi ta\'minotchi qo‘shish')">
-                <i class="fas fa-plus me-1"></i> Yangi ta'minotchi qo‘shish
+<div class="fade-in">
+    <div class="page-header">
+        <h1 class="page-title">Ta'minotchilar</h1>
+        <div class="page-actions">
+            <button class="btn btn-secondary" onclick="exportData()">
+                <i class="fas fa-download"></i>
+                Eksport
+            </button>
+            <a href="{% url 'supplier_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Yangi ta'minotchi qo'shish
             </a>
         </div>
-        <div class="search-form d-flex align-items-center mb-2">
-            <form method="get" id="search-form" class="d-flex">
-                <input type="text" name="q" placeholder="Ta'minotchi bo'yicha qidiring" value="{{ request.GET.q }}" class="form-control me-2" style="width: 250px;">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-search me-1"></i> Qidirish</button>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid slide-up">
+        <div class="stat-card">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-title">Jami Ta'minotchilar</div>
+                    <div class="stat-value">{{ page_obj.paginator.count|default:"2" }}</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        Barcha ta'minotchilar
+                    </div>
+                </div>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <i class="fas fa-truck"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-title">Faol Ta'minotchilar</div>
+                    <div class="stat-value">{{ active_suppliers|default:"0" }}</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-check-circle"></i>
+                        Faol holatda
+                    </div>
+                </div>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #48bb78, #38a169);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-title">Jami Qarz</div>
+                    <div class="stat-value">{{ total_debt|default:"50,000" }}</div>
+                    <div class="stat-change">
+                        <i class="fas fa-money-bill"></i>
+                        so'm
+                    </div>
+                </div>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #f56565, #e53e3e);">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-title">O'rtacha Balans</div>
+                    <div class="stat-value">{{ average_balance|default:"25,000" }}</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-chart-line"></i>
+                        so'm
+                    </div>
+                </div>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #ed8936, #dd6b20);">
+                    <i class="fas fa-balance-scale"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="content-card slide-up">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-search"></i>
+                Qidiruv va Filtrlar
+            </h3>
+        </div>
+        <div class="card-body">
+            <form method="get" class="search-form" id="searchForm">
+                <div class="search-grid">
+                    <div class="search-group">
+                        <label class="search-label">
+                            <i class="fas fa-search"></i>
+                            Qidiruv
+                        </label>
+                        <div class="search-input-wrapper">
+                            <input type="text" name="q" class="search-input"
+                                   placeholder="Ta'minotchi nomi yoki telefon raqami..."
+                                   value="{{ query }}"
+                                   autocomplete="off">
+                            <div class="search-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="search-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                            Qidirish
+                        </button>
+                        {% if query %}
+                        <a href="{% url 'supplier_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i>
+                            Tozalash
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Ta'minotchilar ro‘yxati -->
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="supplier-list">
-        {% for supplier in suppliers %}
-        <div class="col" data-supplier-id="{{ supplier.id }}">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <h5 class="card-title">{{ supplier.name }}</h5>
-                    <p class="card-text mb-1"><strong>Aloqa:</strong> {{ supplier.contact }}</p>
-                    <div class="d-flex justify-content-between mt-3">
-                        <a href="#" class="btn btn-primary btn-sm edit-supplier-btn" data-supplier-id="{{ supplier.id }}" data-bs-toggle="modal" data-bs-target="#supplierModal">
-                            <i class="fas fa-edit me-1"></i> Tahrirlash
-                        </a>
-                        <a href="#" class="btn btn-danger btn-sm delete-supplier-btn" data-supplier-id="{{ supplier.id }}">
-                            <i class="fas fa-trash me-1"></i> O‘chirish
-                        </a>
-                    </div>
-                    <a href="#" class="btn btn-accent btn-sm mt-2 show-incomings-btn" data-supplier-id="{{ supplier.id }}">
-                        <i class="fas fa-eye me-1"></i> Kirimlarni ko‘rish
-                    </a>
-                </div>
+    <!-- Suppliers Table -->
+    <div class="content-card slide-up">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-list"></i>
+                Ta'minotchilar Ro'yxati
+                {% if query %}
+                <span class="search-badge">
+                    "{{ query }}" uchun natijalar
+                </span>
+                {% endif %}
+            </h3>
+            <div class="table-actions">
+                <button class="btn btn-secondary" onclick="selectAll()">
+                    <i class="fas fa-check-square"></i>
+                    Barchasini tanlash
+                </button>
             </div>
         </div>
-        {% empty %}
-        <div class="col-12 text-center">
-            <div class="alert alert-info">Ta'minotchilar topilmadi.</div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- Bog‘liq kirimlar -->
-    <div class="mt-4" id="related-incomings" style="display: none;">
-        <h3>Bog‘liq Kirimlar</h3>
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="incoming-list">
-            <!-- Kirimlar dinamik ravishda qo'shiladi -->
-        </div>
-    </div>
-</div>
-
-<script>
-$(document).ready(function() {
-    // Tahrirlash tugmasi
-    $(document).on('click', '.edit-supplier-btn', function(e) {
-        e.preventDefault();
-        var supplierId = $(this).data('supplier-id');
-        $.ajax({
-            url: '/inventory/supplier/edit/' + supplierId + '/',
-            type: 'GET',
-            success: function(data) {
-                if (data.status === 'success') {
-                    openSupplierModal('Ta\'minotchini tahrirlash', supplierId, data.form);
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Xatolik',
-                        text: data.message || 'Ta\'minotchi ma’lumotlarini olishda xatolik yuz berdi.',
-                        position: 'top-end',
-                        timer: 3000,
-                        timerProgressBar: true,
-                        showConfirmButton: false,
-                        width: '300px',
-                        padding: '10px'
-                    });
-                }
-            }
-        });
-    });
-
-    // O‘chirish tugmasi
-    $(document).on('click', '.delete-supplier-btn', function(e) {
-        e.preventDefault();
-        var supplierId = $(this).data('supplier-id');
-        Swal.fire({
-            title: 'O‘chirishni tasdiqlaysizmi?',
-            text: 'Bu ta\'minotchini haqiqatan ham o‘chirishni xohlaysizmi?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Ha, o‘chirish',
-            cancelButtonText: 'Yo‘q, bekor qilish',
-            position: 'top-end',
-            timer: 5000,
-            timerProgressBar: true,
-            width: '300px',
-            padding: '10px'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '/inventory/supplier/delete/' + supplierId + '/',
-                    type: 'POST',
-                    data: { 'csrfmiddlewaretoken': '{{ csrf_token }}' },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            $('div[data-supplier-id="' + response.supplier_id + '"]').remove();
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Muvaffaqiyat',
-                                text: response.message,
-                                position: 'top-end',
-                                timer: 2000,
-                                timerProgressBar: true,
-                                showConfirmButton: false,
-                                width: '300px',
-                                padding: '10px'
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Xatolik',
-                                text: response.message || 'Ta\'minotchini o‘chirishda xatolik yuz berdi.',
-                                position: 'top-end',
-                                timer: 3000,
-                                timerProgressBar: true,
-                                showConfirmButton: false,
-                                width: '300px',
-                                padding: '10px'
-                            });
-                        }
-                    }
-                });
-            }
-        });
-    });
-
-    // Kirimlarni ko‘rish tugmasi
-    $(document).on('click', '.show-incomings-btn', function(e) {
-        e.preventDefault();
-        var supplierId = $(this).data('supplier-id');
-        $.ajax({
-            url: '/inventory/supplier/' + supplierId + '/incomings/',
-            type: 'GET',
-            success: function(response) {
-                if (response.status === 'success') {
-                    $('#related-incomings').show();
-                    $('#incoming-list').empty();
-                    if (response.incomings.length > 0) {
-                        response.incomings.forEach(incoming => {
-                            $('#incoming-list').append(`
-                                <div class="col">
-                                    <div class="card h-100 shadow-sm border-0">
-                                        <div class="card-body">
-                                            <h5 class="card-title">Kirim #${incoming.id}</h5>
-                                            <p class="card-text mb-1"><strong>Mahsulot:</strong> ${incoming.product}</p>
-                                            <p class="card-text mb-1"><strong>Miqdor:</strong> ${incoming.quantity}</p>
-                                            <p class="card-text mb-1"><strong>Sana:</strong> ${incoming.date}</p>
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-container">
+                    <table class="table" id="suppliersTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                                </th>
+                                <th>
+                                    <i class="fas fa-user"></i>
+                                    Ism
+                                </th>
+                                <th>
+                                    <i class="fas fa-phone"></i>
+                                    Telefon Raqami
+                                </th>
+                                <th>
+                                    <i class="fas fa-money-bill-wave"></i>
+                                    Boshlang'ich Qarz
+                                </th>
+                                <th>
+                                    <i class="fas fa-balance-scale"></i>
+                                    Balans
+                                </th>
+                                <th>
+                                    <i class="fas fa-cogs"></i>
+                                    Amallar
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for supplier in page_obj %}
+                            <tr class="supplier-row" data-id="{{ supplier.id }}">
+                                <td>
+                                    <input type="checkbox" class="supplier-checkbox" value="{{ supplier.id }}">
+                                </td>
+                                <td>
+                                    <div class="supplier-info">
+                                        <div class="supplier-avatar">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div class="supplier-details">
+                                            <strong class="supplier-name">{{ supplier.name }}</strong>
+                                            <small class="supplier-id">ID: #{{ supplier.id }}</small>
                                         </div>
                                     </div>
-                                </div>
-                            `);
-                        });
-                    } else {
-                        $('#incoming-list').append('<div class="col-12 text-center"><div class="alert alert-info">Kirimlar topilmadi.</div></div>');
-                    }
+                                </td>
+                                <td>
+                                    <div class="phone-info">
+                                        <i class="fas fa-phone"></i>
+                                        <span>{{ supplier.phone_number }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="amount-info">
+                                        <span class="amount">{{ supplier.initial_debt|floatformat:0 }}</span>
+                                        <small class="currency">so'm</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="balance-info">
+                                        <span class="balance {% if supplier.balance > 0 %}positive{% elif supplier.balance < 0 %}negative{% else %}zero{% endif %}">
+                                            {{ supplier.balance|floatformat:0 }}
+                                        </span>
+                                        <small class="currency">so'm</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'supplier_edit' supplier.id %}"
+                                           class="btn btn-sm btn-primary"
+                                           title="Tahrirlash">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button onclick="deleteSupplier({{ supplier.id }}, '{{ supplier.name }}')"
+                                                class="btn btn-sm btn-danger"
+                                                title="O'chirish">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        <button onclick="viewDetails({{ supplier.id }})"
+                                                class="btn btn-sm btn-secondary"
+                                                title="Batafsil">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <h3 class="empty-title">Ta'minotchilar topilmadi</h3>
+                    <p class="empty-description">
+                        {% if query %}
+                            "{{ query }}" so'rovi bo'yicha hech qanday ta'minotchi topilmadi.
+                        {% else %}
+                            Hozircha hech qanday ta'minotchi qo'shilmagan.
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'supplier_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Birinchi ta'minotchini qo'shish
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container slide-up">
+        <nav class="pagination-nav">
+            <div class="pagination-info">
+                <span>{{ page_obj.start_index }}-{{ page_obj.end_index }} / {{ page_obj.paginator.count }} ta natija</span>
+            </div>
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if query %}&q={{ query }}{% endif %}" title="Birinchi sahifa">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}" title="Oldingi sahifa">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}" title="Keyingi sahifa">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}" title="Oxirgi sahifa">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    /* Search Form Styles */
+    .search-form {
+        margin-bottom: 0;
+    }
+
+    .search-grid {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1.5rem;
+        align-items: end;
+    }
+
+    .search-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .search-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    .search-input-wrapper {
+        position: relative;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.875rem 1rem 0.875rem 3rem;
+        border: 2px solid var(--border-color);
+        border-radius: 0.75rem;
+        font-size: 1rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--sidebar-active);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        pointer-events: none;
+    }
+
+    .search-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .search-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        background: rgba(102, 126, 234, 0.1);
+        color: var(--sidebar-active);
+        border-radius: 1rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-left: 0.5rem;
+    }
+
+    /* Table Styles */
+    .table-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .supplier-row {
+        transition: all 0.2s ease;
+    }
+
+    .supplier-row:hover {
+        background: rgba(102, 126, 234, 0.05);
+        transform: translateX(5px);
+    }
+
+    .supplier-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .supplier-avatar {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--sidebar-active), #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1rem;
+    }
+
+    .supplier-details {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .supplier-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.125rem;
+    }
+
+    .supplier-id {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+
+    .phone-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+    }
+
+    .amount-info,
+    .balance-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .amount {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .balance {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .balance.positive {
+        color: var(--success-color);
+    }
+
+    .balance.negative {
+        color: var(--danger-color);
+    }
+
+    .balance.zero {
+        color: var(--text-secondary);
+    }
+
+    .currency {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        margin-top: 0.125rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-sm {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        min-width: auto;
+        width: 2.5rem;
+        height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+        opacity: 0.5;
+    }
+
+    .empty-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .empty-description {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* Pagination */
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+
+    .pagination-nav {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        background: var(--card-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1rem;
+        padding: 1rem 1.5rem;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .pagination {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 0.25rem;
+    }
+
+    .page-item {
+        margin: 0;
+    }
+
+    .page-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.5rem;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .page-link:hover {
+        background: rgba(102, 126, 234, 0.1);
+        color: var(--sidebar-active);
+        text-decoration: none;
+    }
+
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, var(--sidebar-active), #764ba2);
+        color: white;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .search-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .search-actions {
+            justify-content: stretch;
+        }
+
+        .search-actions .btn {
+            flex: 1;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .table {
+            min-width: 800px;
+        }
+
+        .pagination-nav {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+        }
+
+        .page-actions {
+            justify-content: center;
+        }
+    }
+</style>
+
+<script>
+    // Search functionality
+    let searchTimeout;
+    const searchInput = document.querySelector('.search-input');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (this.value.length > 2 || this.value.length === 0) {
+                    document.getElementById('searchForm').submit();
                 }
+            }, 1000);
+        });
+    }
+
+    // Select all functionality
+    function toggleSelectAll() {
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const supplierCheckboxes = document.querySelectorAll('.supplier-checkbox');
+
+        supplierCheckboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+
+        updateBulkActions();
+    }
+
+    function selectAll() {
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        selectAllCheckbox.checked = true;
+        toggleSelectAll();
+    }
+
+    function updateBulkActions() {
+        const checkedBoxes = document.querySelectorAll('.supplier-checkbox:checked');
+        // Add bulk action functionality here
+    }
+
+    // Delete supplier
+    function deleteSupplier(id, name) {
+        if (confirm(`Haqiqatan ham "${name}" ta'minotchisini o'chirmoqchimisiz?`)) {
+            // Add delete functionality here
+            window.location.href = `/supplier/delete/${id}/`;
+        }
+    }
+
+    // View details
+    function viewDetails(id) {
+        // Add view details functionality here
+        window.location.href = `/supplier/detail/${id}/`;
+    }
+
+    // Export data
+    function exportData() {
+        // Add export functionality here
+        alert('Eksport funksiyasi ishlab chiqilmoqda...');
+    }
+
+    // Highlight search terms
+    const query = '{{ query }}';
+    if (query) {
+        const cells = document.querySelectorAll('.supplier-name, .phone-info span');
+        cells.forEach(cell => {
+            if (cell.textContent.toLowerCase().includes(query.toLowerCase())) {
+                const regex = new RegExp(`(${query})`, 'gi');
+                cell.innerHTML = cell.innerHTML.replace(regex, '<mark style="background: rgba(102, 126, 234, 0.2); padding: 2px 4px; border-radius: 3px; color: var(--sidebar-active); font-weight: 600;">$1</mark>');
+            }
+        });
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + K to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+        }
+
+        // Ctrl/Cmd + N to add new supplier
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = "{% url 'supplier_create' %}";
+        }
+    });
+
+    // Add loading states to buttons
+    document.querySelectorAll('.btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            if (this.href && !this.href.includes('#') && !this.onclick) {
+                const originalHTML = this.innerHTML;
+                this.innerHTML = '<div class="loading"></div>';
+                this.style.pointerEvents = 'none';
+
+                setTimeout(() => {
+                    this.innerHTML = originalHTML;
+                    this.style.pointerEvents = 'auto';
+                }, 2000);
             }
         });
     });
-});
 </script>
 {% endblock %}
+

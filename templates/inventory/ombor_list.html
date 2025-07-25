@@ -15,7 +15,7 @@
         </div>
         <div class="search-form d-flex align-items-center mb-2">
             <form method="get" id="search-form" class="d-flex animate-slide-left w-100">
-                <input type="text" name="q" placeholder="Ombor nomi bo'yicha qidiring" value="{{ request.GET.q }}"
+                <input type="text" name="q" placeholder="Ombor nomi bo'yicha qidiring" value="{{ query|default:'' }}"
                        class="form-control me-2 search-input" style="width: 250px;">
                 <button type="submit" class="btn btn-primary btn-hover-scale">
                     <i class="fas fa-search me-1"></i> Qidirish
@@ -26,40 +26,46 @@
 
     <!-- Omborlar card ko'rinishida -->
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 animate-fade-in" id="warehouse-list">
-        {% for item in page_obj %}
-        <div class="col" data-warehouse-id="{{ item.warehouse.id }}">
-            <div class="card h-100 shadow-sm border-0 card-hover">
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title d-flex justify-content-between align-items-center mb-2">
-                        <a href="{% url 'warehouse_detail' item.warehouse.id %}" class="text-decoration-none text-primary">
-                            {{ item.warehouse.name }}
-                        </a>
-                        <span class="badge bg-info text-white">{{ item.product_count }} mahsulot</span>
-                    </h5>
-                    <p class="card-text mb-3 flex-grow-1"><strong>Yaratilgan sana:</strong> {{ item.warehouse.created_at|date:"Y-m-d H:i" }}</p>
-                    <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
-                        <a href="{% url 'warehouse_detail' item.warehouse.id %}" class="btn btn-success btn-sm btn-hover-scale">
-                            <i class="fas fa-sign-in-alt me-1"></i> Omborga kirish
-                        </a>
-                        <div class="d-flex gap-2">
-                            <a href="#" class="btn btn-primary btn-sm edit-warehouse-btn btn-hover-scale"
-                               data-warehouse-id="{{ item.warehouse.id }}" data-bs-toggle="modal" data-bs-target="#warehouseModal">
-                                <i class="fas fa-edit me-1"></i> Tahrirlash
+        {% if page_obj %}
+            {% for item in page_obj %}
+            <div class="col" data-warehouse-id="{{ item.warehouse.id|default:0 }}">
+                <div class="card h-100 shadow-sm border-0 card-hover">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title d-flex justify-content-between align-items-center mb-2">
+                            <a href="{% url 'warehouse_detail' item.warehouse.id|default:0 %}" class="text-decoration-none text-primary">
+                                {{ item.warehouse.name|default:"Noma'lum ombor" }}
                             </a>
-                            <a href="#" class="btn btn-danger btn-sm delete-warehouse-btn btn-hover-scale"
-                               data-warehouse-id="{{ item.warehouse.id }}">
-                                <i class="fas fa-trash me-1"></i> O'chirish
+                            <span class="badge bg-info text-white">{{ item.product_count|default:0 }} mahsulot</span>
+                        </h5>
+                        <p class="card-text mb-3 flex-grow-1"><strong>Yaratilgan sana:</strong> {{ item.warehouse.created_at|date:"Y-m-d H:i"|default:"Noma'lum" }}</p>
+                        <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
+                            <a href="{% url 'warehouse_detail' item.warehouse.id|default:0 %}" class="btn btn-success btn-sm btn-hover-scale">
+                                <i class="fas fa-sign-in-alt me-1"></i> Omborga kirish
                             </a>
+                            <div class="d-flex gap-2">
+                                <a href="#" class="btn btn-primary btn-sm edit-warehouse-btn btn-hover-scale"
+                                   data-warehouse-id="{{ item.warehouse.id|default:0 }}" data-bs-toggle="modal" data-bs-target="#warehouseModal">
+                                    <i class="fas fa-edit me-1"></i> Tahrirlash
+                                </a>
+                                <a href="#" class="btn btn-danger btn-sm delete-warehouse-btn btn-hover-scale"
+                                   data-warehouse-id="{{ item.warehouse.id|default:0 }}">
+                                    <i class="fas fa-trash me-1"></i> O'chirish
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        {% empty %}
-        <div class="col-12 text-center animate-fade-in">
-            <div class="alert alert-info">Omborlar topilmadi.</div>
-        </div>
-        {% endfor %}
+            {% empty %}
+            <div class="col-12 text-center animate-fade-in">
+                <div class="alert alert-info">Bu sahifada omborlar topilmadi.</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center animate-fade-in">
+                <div class="alert alert-info">Omborlar topilmadi yoki ma'lumotlar yuklanmadi.</div>
+            </div>
+        {% endif %}
     </div>
 
     <!-- Pagination -->
@@ -69,7 +75,7 @@
             <ul class="pagination">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
                         « Oldingi
                     </a>
                 </li>
@@ -80,14 +86,14 @@
                     <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                     {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a>
+                        <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}">{{ num }}</a>
                     </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
                         Keyingi »
                     </a>
                 </li>
@@ -134,267 +140,267 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// Animatsiyalar uchun funktsiyalar
-function animateElement(element, animation, delay = 0) {
-    setTimeout(() => {
-        element.classList.add('animate__animated', `animate__${animation}`);
-    }, delay);
-}
-
-// Sahifa yuklanganda animatsiyalar
-document.addEventListener('DOMContentLoaded', function() {
-    const animatedElements = document.querySelectorAll('.animate-fade-in, .animate-slide-down, .animate-slide-left');
-    animatedElements.forEach((el, index) => {
-        const delay = index * 100;
-        if (el.classList.contains('animate-fade-in')) {
-            animateElement(el, 'fadeIn', delay);
-        } else if (el.classList.contains('animate-slide-down')) {
-            animateElement(el, 'slideInDown', delay);
-        } else if (el.classList.contains('animate-slide-left')) {
-            animateElement(el, 'slideInLeft', delay);
-        }
-    });
-});
-
-function openWarehouseModal(title, warehouseId = null, warehouseData = null) {
-    const modal = $('#warehouseModal');
-    const form = $('#warehouse-form');
-    const saveBtn = $('#save-warehouse-btn');
-
-    // Modal sarlavhasini o'rnatish
-    modal.find('.modal-title').text(title);
-
-    // Formani tozalash
-    form[0].reset();
-    $('#warehouse-id').val(warehouseId || '');
-    $('#warehouse-name').removeClass('is-invalid');
-    saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
-
-    // Agar warehouseData bo'lsa, tahrirlash rejimi
-    if (warehouseId && warehouseData) {
-        $('#warehouse-name').val(warehouseData.name);
-        form.attr('action', '/inventory/warehouse/edit/' + warehouseId + '/');
-    } else {
-        // Yangi ombor qo'shish rejimi
-        form.attr('action', '{% url 'warehouse_create' %}');
+    // Animatsiyalar uchun funktsiyalar
+    function animateElement(element, animation, delay = 0) {
+        setTimeout(() => {
+            element.classList.add('animate__animated', `animate__${animation}`);
+        }, delay);
     }
 
-    modal.modal('show');
-}
-
-$(document).ready(function() {
-    // Input fokus animatsiyasi
-    $('.animate-input-focus').focus(function() {
-        $(this).addClass('focus-animate');
-    }).blur(function() {
-        $(this).removeClass('focus-animate');
+    // Sahifa yuklanganda animatsiyalar
+    document.addEventListener('DOMContentLoaded', function() {
+        const animatedElements = document.querySelectorAll('.animate-fade-in, .animate-slide-down, .animate-slide-left');
+        animatedElements.forEach((el, index) => {
+            const delay = index * 100;
+            if (el.classList.contains('animate-fade-in')) {
+                animateElement(el, 'fadeIn', delay);
+            } else if (el.classList.contains('animate-slide-down')) {
+                animateElement(el, 'slideInDown', delay);
+            } else if (el.classList.contains('animate-slide-left')) {
+                animateElement(el, 'slideInLeft', delay);
+            }
+        });
     });
 
-    // Ombor qo'shish/tahrirlash formasi
-    $('#warehouse-form').submit(function(e) {
-        e.preventDefault();
-        const form = $(this);
-        const warehouseName = $('#warehouse-name').val().trim();
+    function openWarehouseModal(title, warehouseId = null, warehouseData = null) {
+        const modal = $('#warehouseModal');
+        const form = $('#warehouse-form');
         const saveBtn = $('#save-warehouse-btn');
 
-        if (!warehouseName) {
-            $('#warehouse-name').addClass('is-invalid');
-            showToast('error', 'Iltimos, ombor nomini kiriting.');
-            return;
+        // Modal sarlavhasini o'rnatish
+        modal.find('.modal-title').text(title);
+
+        // Formani tozalash
+        form[0].reset();
+        $('#warehouse-id').val(warehouseId || '');
+        $('#warehouse-name').removeClass('is-invalid');
+        saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
+
+        // Agar warehouseData bo'lsa, tahrirlash rejimi
+        if (warehouseId && warehouseData) {
+            $('#warehouse-name').val(warehouseData.name);
+            form.attr('action', '/warehouse/edit/' + warehouseId + '/');
+        } else {
+            // Yangi ombor qo'shish rejimi
+            form.attr('action', '{% url 'warehouse_create' %}');
         }
 
-        $('#warehouse-name').removeClass('is-invalid');
-        const url = form.attr('action');
-        saveBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saqlanmoqda...');
+        modal.modal('show');
+    }
 
-        $.ajax({
-            url: url,
-            type: 'POST',
-            data: {
-                'name': warehouseName,
-                'csrfmiddlewaretoken': '{{ csrf_token }}'
-            },
-            success: function(response) {
-                if (response.status === 'success') {
-                    const warehouse = response.warehouse;
-                    let card = $(`div[data-warehouse-id="${warehouse.id}"]`);
+    $(document).ready(function() {
+        // Input fokus animatsiyasi
+        $('.animate-input-focus').focus(function() {
+            $(this).addClass('focus-animate');
+        }).blur(function() {
+            $(this).removeClass('focus-animate');
+        });
 
-                    if (card.length) {
-                        // Tahrirlash
-                        card.find('.card-title a').text(warehouse.name).attr('href', '/inventory/warehouse/' + warehouse.id + '/');
-                        card.find('.card-text').html('<strong>Yaratilgan sana:</strong> ' + warehouse.created_at);
-                        card.find('.badge').text('0 mahsulot'); // Yangi omborlarda mahsulotlar soni 0 bo'ladi
-                        card.addClass('animate__animated animate__pulse');
-                        setTimeout(() => card.removeClass('animate__animated animate__pulse'), 1000);
-                    } else {
-                        // Qo'shish
-                        const newCard = $(`
-                            <div class="col" data-warehouse-id="${warehouse.id}">
-                                <div class="card h-100 shadow-sm border-0 card-hover animate__animated animate__zoomIn">
-                                    <div class="card-body d-flex flex-column">
-                                        <h5 class="card-title d-flex justify-content-between align-items-center mb-2">
-                                            <a href="/inventory/warehouse/${warehouse.id}/" class="text-decoration-none text-primary">${warehouse.name}</a>
-                                            <span class="badge bg-info text-white">0 mahsulot</span>
-                                        </h5>
-                                        <p class="card-text mb-3 flex-grow-1"><strong>Yaratilgan sana:</strong> ${warehouse.created_at}</p>
-                                        <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
-                                            <a href="/inventory/warehouse/${warehouse.id}/" class="btn btn-success btn-sm btn-hover-scale">
-                                                <i class="fas fa-sign-in-alt me-1"></i> Omborga kirish
-                                            </a>
-                                            <div class="d-flex gap-2">
-                                                <a href="#" class="btn btn-primary btn-sm edit-warehouse-btn btn-hover-scale"
-                                                   data-warehouse-id="${warehouse.id}" data-bs-toggle="modal" data-bs-target="#warehouseModal">
-                                                    <i class="fas fa-edit me-1"></i> Tahrirlash
+        // Ombor qo'shish/tahrirlash formasi
+        $('#warehouse-form').submit(function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const warehouseName = $('#warehouse-name').val().trim();
+            const saveBtn = $('#save-warehouse-btn');
+
+            if (!warehouseName) {
+                $('#warehouse-name').addClass('is-invalid');
+                showToast('error', 'Iltimos, ombor nomini kiriting.');
+                return;
+            }
+
+            $('#warehouse-name').removeClass('is-invalid');
+            const url = form.attr('action');
+            saveBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saqlanmoqda...');
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: {
+                    'name': warehouseName,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        const warehouse = response.warehouse;
+                        let card = $(`div[data-warehouse-id="${warehouse.id}"]`);
+
+                        if (card.length) {
+                            // Tahrirlash
+                            card.find('.card-title a').text(warehouse.name).attr('href', '/warehouse/' + warehouse.id + '/');
+                            card.find('.card-text').html('<strong>Yaratilgan sana:</strong> ' + warehouse.created_at);
+                            card.find('.badge').text('0 mahsulot');
+                            card.addClass('animate__animated animate__pulse');
+                            setTimeout(() => card.removeClass('animate__animated animate__pulse'), 1000);
+                        } else {
+                            // Qo'shish
+                            const newCard = $(`
+                                <div class="col" data-warehouse-id="${warehouse.id}">
+                                    <div class="card h-100 shadow-sm border-0 card-hover animate__animated animate__zoomIn">
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="card-title d-flex justify-content-between align-items-center mb-2">
+                                                <a href="/warehouse/${warehouse.id}/" class="text-decoration-none text-primary">${warehouse.name}</a>
+                                                <span class="badge bg-info text-white">0 mahsulot</span>
+                                            </h5>
+                                            <p class="card-text mb-3 flex-grow-1"><strong>Yaratilgan sana:</strong> ${warehouse.created_at}</p>
+                                            <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
+                                                <a href="/warehouse/${warehouse.id}/" class="btn btn-success btn-sm btn-hover-scale">
+                                                    <i class="fas fa-sign-in-alt me-1"></i> Omborga kirish
                                                 </a>
-                                                <a href="#" class="btn btn-danger btn-sm delete-warehouse-btn btn-hover-scale"
-                                                   data-warehouse-id="${warehouse.id}">
-                                                    <i class="fas fa-trash me-1"></i> O'chirish
-                                                </a>
+                                                <div class="d-flex gap-2">
+                                                    <a href="#" class="btn btn-primary btn-sm edit-warehouse-btn btn-hover-scale"
+                                                       data-warehouse-id="${warehouse.id}" data-bs-toggle="modal" data-bs-target="#warehouseModal">
+                                                        <i class="fas fa-edit me-1"></i> Tahrirlash
+                                                    </a>
+                                                    <a href="#" class="btn btn-danger btn-sm delete-warehouse-btn btn-hover-scale"
+                                                       data-warehouse-id="${warehouse.id}">
+                                                        <i class="fas fa-trash me-1"></i> O'chirish
+                                                    </a>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        `);
-                        $('#warehouse-list').prepend(newCard);
-                    }
-
-                    $('#warehouseModal').modal('hide');
-                    showToast('success', response.message);
-                } else {
-                    showToast('error', response.message || 'Ombor qo\'shishda xatolik yuz berdi.');
-                }
-            },
-            error: function(xhr) {
-                let errorMsg = 'Server bilan bog\'lanishda xatolik yuz berdi.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
-                } else if (xhr.status === 400) {
-                    errorMsg = 'Bu nomdagi ombor allaqachon mavjud.';
-                }
-                showToast('error', errorMsg);
-            },
-            complete: function() {
-                saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
-            }
-        });
-    });
-
-    // Tahrirlash tugmasi
-    $(document).on('click', '.edit-warehouse-btn', function(e) {
-        e.preventDefault();
-        const warehouseId = $(this).data('warehouse-id');
-        $(this).addClass('animate__animated animate__rubberBand');
-        setTimeout(() => $(this).removeClass('animate__animated animate__rubberBand'), 1000);
-
-        $.ajax({
-            url: '/inventory/warehouse/edit/' + warehouseId + '/',
-            type: 'GET',
-            success: function(data) {
-                if (data.status === 'success') {
-                    openWarehouseModal('Omborni tahrirlash', warehouseId, data.form);
-                } else {
-                    showToast('error', data.message || 'Ombor ma\'lumotlarini olishda xatolik yuz berdi.');
-                }
-            },
-            error: function(xhr) {
-                const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
-                showToast('error', errorMsg);
-            }
-        });
-    });
-
-    // Ombor o'chirish
-    $(document).on('click', '.delete-warehouse-btn', function(e) {
-        e.preventDefault();
-        const warehouseId = $(this).data('warehouse-id');
-        const btn = $(this);
-        btn.addClass('animate__animated animate__headShake');
-        setTimeout(() => btn.removeClass('animate__animated animate__headShake'), 1000);
-
-        Swal.fire({
-            title: 'O\'chirishni tasdiqlaysizmi?',
-            html: `<p>Bu omborni haqiqatan ham o'chirishni xohlaysizmi?</p><p class="text-danger"><strong>Diqqat!</strong> Ombor bilan birga uning barcha mahsulotlari ham o'chib ketadi!</p>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Ha, o\'chirish',
-            cancelButtonText: 'Yo\'q, bekor qilish',
-            customClass: {
-                confirmButton: 'btn btn-danger me-2',
-                cancelButton: 'btn btn-secondary'
-            },
-            buttonsStyling: false,
-            showClass: {
-                popup: 'animate__animated animate__fadeInDown'
-            },
-            hideClass: {
-                popup: 'animate__animated animate__fadeOutUp'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '/inventory/warehouse/delete/' + warehouseId + '/',
-                    type: 'POST',
-                    data: { 'csrfmiddlewaretoken': '{{ csrf_token }}' },
-                    beforeSend: function() {
-                        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> O\'chirilmoqda...');
-                    },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            const card = $(`div[data-warehouse-id="${response.warehouse_id}"]`);
-                            card.addClass('animate__animated animate__zoomOut');
-                            setTimeout(() => card.remove(), 500);
-                            showToast('success', response.message);
-                        } else {
-                            showToast('error', response.message || 'Omborni o\'chirishda xatolik yuz berdi.');
+                            `);
+                            $('#warehouse-list').prepend(newCard);
                         }
-                    },
-                    error: function(xhr) {
-                        const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
-                        showToast('error', errorMsg);
-                    },
-                    complete: function() {
-                        btn.prop('disabled', false).html('<i class="fas fa-trash me-1"></i> O\'chirish');
+
+                        $('#warehouseModal').modal('hide');
+                        showToast('success', response.message);
+                    } else {
+                        showToast('error', response.message || 'Ombor qo\'shishda xatolik yuz berdi.');
                     }
-                });
-            }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    } else if (xhr.status === 400) {
+                        errorMsg = 'Bu nomdagi ombor allaqachon mavjud.';
+                    }
+                    showToast('error', errorMsg);
+                },
+                complete: function() {
+                    saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
+                }
+            });
+        });
+
+        // Tahrirlash tugmasi
+        $(document).on('click', '.edit-warehouse-btn', function(e) {
+            e.preventDefault();
+            const warehouseId = $(this).data('warehouse-id');
+            $(this).addClass('animate__animated animate__rubberBand');
+            setTimeout(() => $(this).removeClass('animate__animated animate__rubberBand'), 1000);
+
+            $.ajax({
+                url: '/warehouse/edit/' + warehouseId + '/',
+                type: 'GET',
+                success: function(data) {
+                    if (data.status === 'success') {
+                        openWarehouseModal('Omborni tahrirlash', warehouseId, data.form);
+                    } else {
+                        showToast('error', data.message || 'Ombor ma\'lumotlarini olishda xatolik yuz berdi.');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                    showToast('error', errorMsg);
+                }
+            });
+        });
+
+        // Ombor o'chirish
+        $(document).on('click', '.delete-warehouse-btn', function(e) {
+            e.preventDefault();
+            const warehouseId = $(this).data('warehouse-id');
+            const btn = $(this);
+            btn.addClass('animate__animated animate__headShake');
+            setTimeout(() => btn.removeClass('animate__animated animate__headShake'), 1000);
+
+            Swal.fire({
+                title: 'O\'chirishni tasdiqlaysizmi?',
+                html: `<p>Bu omborni haqiqatan ham o'chirishni xohlaysizmi?</p><p class="text-danger"><strong>Diqqat!</strong> Ombor bilan birga uning barcha mahsulotlari ham o'chib ketadi!</p>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ha, o\'chirish',
+                cancelButtonText: 'Yo\'q, bekor qilish',
+                customClass: {
+                    confirmButton: 'btn btn-danger me-2',
+                    cancelButton: 'btn btn-secondary'
+                },
+                buttonsStyling: false,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/warehouse/delete/' + warehouseId + '/',
+                        type: 'POST',
+                        data: { 'csrfmiddlewaretoken': '{{ csrf_token }}' },
+                        beforeSend: function() {
+                            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> O\'chirilmoqda...');
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                const card = $(`div[data-warehouse-id="${response.warehouse_id}"]`);
+                                card.addClass('animate__animated animate__zoomOut');
+                                setTimeout(() => card.remove(), 500);
+                                showToast('success', response.message);
+                            } else {
+                                showToast('error', response.message || 'Omborni o\'chirishda xatolik yuz berdi.');
+                            }
+                        },
+                        error: function(xhr) {
+                            const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                            showToast('error', errorMsg);
+                        },
+                        complete: function() {
+                            btn.prop('disabled', false).html('<i class="fas fa-trash me-1"></i> O\'chirish');
+                        }
+                    });
+                }
+            });
+        });
+
+        // Toast notification funktsiyasi
+        function showToast(icon, message) {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInRight'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutRight'
+                },
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            });
+
+            Toast.fire({
+                icon: icon,
+                title: message
+            });
+        }
+
+        // Modal yopilganda formani tozalash
+        $('#warehouseModal').on('hidden.bs.modal', function () {
+            $('#warehouse-form')[0].reset();
+            $('#warehouse-name').removeClass('is-invalid');
+            $('#warehouse-id').val('');
+            $('#save-warehouse-btn').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
         });
     });
-
-    // Toast notification funktsiyasi
-    function showToast(icon, message) {
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true,
-            showClass: {
-                popup: 'animate__animated animate__fadeInRight'
-            },
-            hideClass: {
-                popup: 'animate__animated animate__fadeOutRight'
-            },
-            didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer);
-                toast.addEventListener('mouseleave', Swal.resumeTimer);
-            }
-        });
-
-        Toast.fire({
-            icon: icon,
-            title: message
-        });
-    }
-
-    // Modal yopilganda formani tozalash
-    $('#warehouseModal').on('hidden.bs.modal', function () {
-        $('#warehouse-form')[0].reset();
-        $('#warehouse-name').removeClass('is-invalid');
-        $('#warehouse-id').val('');
-        $('#save-warehouse-btn').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
-    });
-});
 </script>
 
 <style>

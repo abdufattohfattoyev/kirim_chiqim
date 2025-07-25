@@ -1,308 +1,243 @@
 {% extends "index.html" %}
+{% block title %}Chiqim qo'shish{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Chiqim qo'shish</h4>
-    </div>
-    <div class="card-body">
-        <form method="post" id="chiqim-form">
-            {% csrf_token %}
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group mb-3">
-                        <label for="id_date" class="form-label">Sana*</label>
-                        {{ form.date }}
-                        {% if form.date.errors %}
-                        <div class="text-danger small">{{ form.date.errors }}</div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group mb-3">
-                        <label for="id_customer" class="form-label">Xaridor*</label>
-                        {{ form.customer }}
-                        {% if form.customer.errors %}
-                        <div class="text-danger small">{{ form.customer.errors }}</div>
-                        {% endif %}
-                    </div>
-                </div>
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h4>Chiqim qo'shish</h4>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+            <div class="alert alert-dismissible fade show">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
+            {% endif %}
 
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group mb-3">
-                        <label for="id_total_amount" class="form-label">Jami summa*</label>
-                        {{ form.total_amount }}
-                        {% if form.total_amount.errors %}
-                        <div class="text-danger small">{{ form.total_amount.errors }}</div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group mb-3">
-                        <label for="id_paid_amount" class="form-label">To'langan summa*</label>
-                        {{ form.paid_amount }}
-                        {% if form.paid_amount.errors %}
-                        <div class="text-danger small">{{ form.paid_amount.errors }}</div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group mb-3">
-                        <label for="id_debt" class="form-label">Qarz*</label>
-                        {{ form.debt }}
-                        {% if form.debt.errors %}
-                        <div class="text-danger small">{{ form.debt.errors }}</div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group mb-3">
-                <label for="id_note" class="form-label">Izoh</label>
-                {{ form.note }}
-            </div>
-
-            <h5 class="mt-4 mb-3">Mahsulotlar*</h5>
-            {{ formset.management_form }}
-            <table class="table table-bordered formset-table">
-                <thead class="table-light">
-                    <tr>
-                        <th width="40%">Mahsulot*</th>
-                        <th width="15%">Miqdor*</th>
-                        <th width="15%">Narx*</th>
-                        <th width="15%">Jami</th>
-                        <th width="15%">O'chirish</th>
-                    </tr>
-                </thead>
-                <tbody id="formset-container">
-                    {% for form in formset %}
-                    <tr class="formset-row">
-                        <td>
-                            {{ form.product }}
-                            {% if form.product.errors %}
-                            <div class="text-danger small">{{ form.product.errors }}</div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {{ form.quantity }}
-                            {% if form.quantity.errors %}
-                            <div class="text-danger small">{{ form.quantity.errors }}</div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {{ form.price }}
-                            {% if form.price.errors %}
-                            <div class="text-danger small">{{ form.price.errors }}</div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {{ form.total }}
-                        </td>
-                        <td class="text-center">
-                            {{ form.DELETE }}
-                            <button type="button" class="btn btn-sm btn-danger delete-row">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-            <button type="button" class="btn btn-success mt-2" id="add-formset-row">
-                <i class="fas fa-plus-circle"></i> Yangi mahsulot qo'shish
-            </button>
-
-            <div class="d-flex justify-content-between align-items-center mt-4">
-                <div class="total-display h5">
-                    Umumiy summa: <span id="grand-total">0</span> so'm
+            <form method="post" id="chiqim-form">
+                {% csrf_token %}
+                <div>
+                    <label for="{{ form.date.id_for_label }}">Sana*</label>
+                    {{ form.date }}
+                    {% if form.date.errors %}<div class="error">{{ form.date.errors }}</div>{% endif %}
                 </div>
                 <div>
-                    <a href="{% url 'chiqim_list' %}" class="btn btn-secondary">
-                        <i class="fas fa-times"></i> Bekor qilish
-                    </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Saqlash
-                    </button>
+                    <label for="{{ form.warehouse.id_for_label }}">Ombor*</label>
+                    {{ form.warehouse }}
+                    {% if form.warehouse.errors %}<div class="error">{{ form.warehouse.errors }}</div>{% endif %}
                 </div>
-            </div>
-        </form>
+                <div>
+                    <label for="{{ form.customer.id_for_label }}">Xaridor*</label>
+                    {{ form.customer }}
+                    {% if form.customer.errors %}<div class="error">{{ form.customer.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.total_amount.id_for_label }}">Jami summa*</label>
+                    {{ form.total_amount }}
+                    {% if form.total_amount.errors %}<div class="error">{{ form.total_amount.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.paid_amount.id_for_label }}">To'langan summa*</label>
+                    {{ form.paid_amount }}
+                    {% if form.paid_amount.errors %}<div class="error">{{ form.paid_amount.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="id_debt">Qarz</label>
+                    <input type="number" id="id_debt" name="debt" step="0.01" readonly>
+                </div>
+                <div>
+                    <label for="{{ form.note.id_for_label }}">Izoh</label>
+                    {{ form.note }}
+                    {% if form.note.errors %}<div class="error">{{ form.note.errors }}</div>{% endif %}
+                </div>
+
+                <h5>Mahsulotlar*</h5>
+                {{ formset.management_form }}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mahsulot*</th>
+                            <th>Miqdor*</th>
+                            <th>Narx*</th>
+                            <th>Jami</th>
+                            <th>Mavjud</th>
+                            <th>O'chirish</th>
+                        </tr>
+                    </thead>
+                    <tbody id="formset-container">
+                        {% for form in formset %}
+                        <tr class="formset-row" data-form-index="{{ forloop.counter0 }}">
+                            <td>{{ form.product }}{% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                {% if form.product.errors %}<div class="error">{{ form.product.errors }}</div>{% endif %}
+                            </td>
+                            <td>{{ form.quantity }}
+                                {% if form.quantity.errors %}<div class="error">{{ form.quantity.errors }}</div>{% endif %}
+                            </td>
+                            <td>{{ form.price }}
+                                {% if form.price.errors %}<div class="error">{{ form.price.errors }}</div>{% endif %}
+                            </td>
+                            <td><input type="number" class="row-total" step="0.01" readonly></td>
+                            <td><span class="available-stock">0</span></td>
+                            <td>{{ form.DELETE }}
+                                <button type="button" class="delete-row">O'chirish</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="button" id="add-formset-row">Yangi mahsulot qo'shish</button>
+
+                <div>
+                    <span>Umumiy summa: <span id="grand-total">0</span> so'm</span>
+                    <div>
+                        <a href="{% url 'outgoing_list' %}" class="btn btn-secondary">Orqaga</a>
+                        <button type="submit" id="submit-btn">Saqlash</button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const formsetContainer = document.getElementById('formset-container');
-    const addButton = document.getElementById('add-formset-row');
-    const totalFormsInput = document.querySelector('[name="form-TOTAL_FORMS"]');
-    const grandTotalDisplay = document.getElementById('grand-total');
-    const form = document.getElementById('chiqim-form');
+$(document).ready(function() {
+    const formsetContainer = $('#formset-container');
+    const addButton = $('#add-formset-row');
+    const totalFormsInput = $('#id_form-TOTAL_FORMS');
+    const grandTotalDisplay = $('#grand-total');
+    let formCount = parseInt(totalFormsInput.val());
 
-    // Initialize form count
-    let formCount = parseInt(totalFormsInput.value);
-    const emptyForm = formsetContainer.querySelector('.formset-row').cloneNode(true);
-
-    // Add new row
-    function addNewRow() {
-        const newRow = emptyForm.cloneNode(true);
-        const newRowIndex = formCount;
-
-        // Update all input names and IDs
-        newRow.querySelectorAll('input, select').forEach(input => {
-            const name = input.name.replace(/form-\d+-/, `form-${newRowIndex}-`);
-            const id = input.id.replace(/id_form-\d+-/, `id_form-${newRowIndex}-`);
-            input.name = name;
-            input.id = id;
-            input.value = '';
-            if (input.type === 'checkbox') input.checked = false;
-        });
-
-        // Clear errors and set default values
-        newRow.querySelectorAll('.text-danger').forEach(el => el.remove());
-        newRow.querySelectorAll('input[type="number"]').forEach(input => {
-            if (!input.classList.contains('total')) input.value = '0';
-        });
-
-        // Add to container
-        formsetContainer.appendChild(newRow);
-        totalFormsInput.value = ++formCount;
-
-        // Initialize events for new row
-        initRowEvents(newRow);
-    }
-
-    // Initialize row events
-    function initRowEvents(row) {
-        const quantityInput = row.querySelector('input[name*="-quantity"]');
-        const priceInput = row.querySelector('input[name*="-price"]');
-
-        if (quantityInput && priceInput) {
-            quantityInput.addEventListener('input', updateRowTotal);
-            priceInput.addEventListener('input', updateRowTotal);
+    // Warehouse o'zgarishida mahsulotlarni yuklash
+    $('#id_warehouse').on('change', function() {
+        const warehouseId = $(this).val();
+        if (warehouseId) {
+            loadProductsByWarehouse(warehouseId);
+        } else {
+            $('select[name*="-product"]').html('<option value="">---------</option>');
+            $('.available-stock').text('0');
         }
+    });
+
+    function loadProductsByWarehouse(warehouseId) {
+        $.get('/inventory/get_products_by_warehouse/', {warehouse_id: warehouseId})
+            .done(function(data) {
+                $('select[name*="-product"]').each(function() {
+                    let options = '<option value="">---------</option>';
+                    data.products.forEach(product => {
+                        options += `<option value="${product.id}" data-stock="${product.stock}" data-unit="${product.unit}">${product.name}</option>`;
+                    });
+                    $(this).html(options);
+                });
+            })
+            .fail(function() {
+                alert('Mahsulotlarni yuklashda xatolik yuz berdi');
+            });
     }
 
-    // Update row total
-    function updateRowTotal(event) {
-        const row = event.target.closest('.formset-row');
-        const quantity = parseFloat(row.querySelector('input[name*="-quantity"]').value) || 0;
-        const price = parseFloat(row.querySelector('input[name*="-price"]').value) || 0;
-        const totalInput = row.querySelector('input[name*="-total"]');
+    function addNewRow() {
+        const newRow = formsetContainer.find('.formset-row').first().clone();
+        newRow.find('input, select').each(function() {
+            if (this.type === 'checkbox') {
+                this.checked = false;
+            } else if (!this.readOnly) {
+                this.value = '';
+            }
+        });
+        newRow.find('.error').remove();
+        newRow.find('.available-stock').text('0');
+        newRow.attr('data-form-index', formCount);
+        newRow.find('[name]').each(function() {
+            this.name = this.name.replace(/\d+/, formCount);
+            this.id = this.id.replace(/\d+/, formCount);
+        });
+        formsetContainer.append(newRow);
+        formCount++;
+        totalFormsInput.val(formCount);
+    }
 
-        totalInput.value = (quantity * price).toFixed(2);
+    function updateRowTotal(row) {
+        const quantity = parseFloat(row.find('input[name*="-quantity"]').val()) || 0;
+        const price = parseFloat(row.find('input[name*="-price"]').val()) || 0;
+        row.find('.row-total').val((quantity * price).toFixed(2));
         updateGrandTotal();
     }
 
-    // Update grand total
     function updateGrandTotal() {
         let grandTotal = 0;
-
-        document.querySelectorAll('.formset-row:not([style*="display: none"])').forEach(row => {
-            const total = parseFloat(row.querySelector('input[name*="-total"]').value) || 0;
-            grandTotal += total;
+        formsetContainer.find('.formset-row').each(function() {
+            if (!$(this).find('input[name*="-DELETE"]').prop('checked')) {
+                grandTotal += parseFloat($(this).find('.row-total').val()) || 0;
+            }
         });
-
-        document.getElementById('id_total_amount').value = grandTotal.toFixed(2);
-        grandTotalDisplay.textContent = grandTotal.toLocaleString();
-
-        // Auto-calculate debt
-        const paidAmount = parseFloat(document.getElementById('id_paid_amount').value) || 0;
-        document.getElementById('id_debt').value = (grandTotal - paidAmount).toFixed(2);
+        $('#id_total_amount').val(grandTotal.toFixed(2));
+        grandTotalDisplay.text(Math.round(grandTotal));
+        updateDebt();
     }
 
-    // Delete row handler
-    formsetContainer.addEventListener('click', function(e) {
-        if (e.target.closest('.delete-row')) {
-            const row = e.target.closest('.formset-row');
-            row.querySelector('input[name*="-DELETE"]').checked = true;
-            row.style.display = 'none';
-            updateGrandTotal();
-        }
+    function updateDebt() {
+        const total = parseFloat($('#id_total_amount').val()) || 0;
+        const paid = parseFloat($('#id_paid_amount').val()) || 0;
+        $('#id_debt').val(Math.max(0, total - paid).toFixed(2));
+    }
+
+    $(document).on('input', 'input[name*="-quantity"], input[name*="-price"]', function() {
+        updateRowTotal($(this).closest('.formset-row'));
     });
 
-    // Paid amount change handler
-    document.getElementById('id_paid_amount').addEventListener('input', function() {
-        const totalAmount = parseFloat(document.getElementById('id_total_amount').value) || 0;
-        const paidAmount = parseFloat(this.value) || 0;
-        document.getElementById('id_debt').value = (totalAmount - paidAmount).toFixed(2);
+    $(document).on('click', '.delete-row', function() {
+        $(this).closest('.formset-row').find('input[name*="-DELETE"]').prop('checked', true).closest('tr').hide();
+        updateGrandTotal();
     });
 
-    // Add button click handler
-    addButton.addEventListener('click', addNewRow);
+    $('#id_paid_amount').on('input', updateDebt);
 
-    // Form validation
-    form.addEventListener('submit', function(e) {
-        // Validate at least one product
-        const visibleRows = formsetContainer.querySelectorAll('.formset-row:not([style*="display: none"])');
-        if (visibleRows.length === 0) {
-            e.preventDefault();
-            alert('Kamida bitta mahsulot qoʻshilishi shart!');
-            return;
+    $('#add-formset-row').on('click', addNewRow);
+
+    $('#chiqim-form').on('submit', function(e) {
+        e.preventDefault();
+        let isValid = true;
+        const errors = [];
+
+        if (!$('#id_warehouse').val()) {
+            errors.push('Ombor tanlangan bo‘lishi kerak!');
+            isValid = false;
         }
 
-        // Validate total = paid + debt
-        const totalAmount = parseFloat(document.getElementById('id_total_amount').value) || 0;
-        const paidAmount = parseFloat(document.getElementById('id_paid_amount').value) || 0;
-        const debt = parseFloat(document.getElementById('id_debt').value) || 0;
-
-        if (Math.abs(totalAmount - (paidAmount + debt)) > 0.01) {
-            e.preventDefault();
-            alert('Jami summa toʻlangan summa va qarz yigʻindisiga teng boʻlishi kerak!');
-            return;
-        }
-
-        // Validate each product row
-        let hasErrors = false;
-        visibleRows.forEach(row => {
-            const product = row.querySelector('select[name*="-product"]').value;
-            const quantity = row.querySelector('input[name*="-quantity"]').value;
-            const price = row.querySelector('input[name*="-price"]').value;
-
-            if (!product || !quantity || !price) {
-                hasErrors = true;
-                row.classList.add('table-danger');
+        formsetContainer.find('.formset-row').each(function() {
+            const row = $(this);
+            if (!row.find('input[name*="-DELETE"]').prop('checked')) {
+                if (!row.find('select[name*="-product"]').val()) {
+                    errors.push('Mahsulot tanlangan bo‘lishi kerak!');
+                    isValid = false;
+                }
+                const qty = parseFloat(row.find('input[name*="-quantity"]').val()) || 0;
+                if (qty <= 0) {
+                    errors.push('Miqdor to‘g‘ri kiritilishi kerak!');
+                    isValid = false;
+                }
+                const price = parseFloat(row.find('input[name*="-price"]').val()) || 0;
+                if (price <= 0) {
+                    errors.push('Narx to‘g‘ri kiritilishi kerak!');
+                    isValid = false;
+                }
             }
         });
 
-        if (hasErrors) {
-            e.preventDefault();
-            alert('Barcha mahsulotlar uchun maydonlarni toʻldirish shart!');
-            return;
+        if (isValid) {
+            this.submit();
+        } else {
+            alert('Xatoliklar mavjud:\n' + errors.join('\n'));
         }
     });
 
-    // Initialize events for existing rows
-    formsetContainer.querySelectorAll('.formset-row').forEach(row => {
-        initRowEvents(row);
-        updateRowTotal({target: row.querySelector('input[name*="-quantity"]')});
+    // Boshlang‘ich hisoblanishlar
+    formsetContainer.find('.formset-row').each(function() {
+        updateRowTotal($(this));
     });
-
-    // Initial calculation
     updateGrandTotal();
 });
 </script>
-
-<style>
-    .formset-table th {
-        background-color: #f8f9fa;
-    }
-    .formset-row td {
-        vertical-align: middle;
-    }
-    .delete-row {
-        cursor: pointer;
-    }
-    .total-display {
-        font-weight: 600;
-        color: #2c3e50;
-    }
-    .text-danger.small {
-        font-size: 0.8rem;
-    }
-    .table-danger {
-        background-color: rgba(220, 53, 69, 0.1);
-    }
-</style>
 {% endblock %}

@@ -1,119 +1,71 @@
 {% extends "index.html" %}
-{% block title %}{{ warehouse.name }} - Mahsulotlar{% endblock %}
 {% block content %}
 <div class="container-fluid py-4 animate-fade-in">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0 animate-slide-down">
-            <a href="{% url 'warehouse_list' %}" class="text-decoration-none text-primary me-2">
-                <i class="fas fa-arrow-left"></i>
-            </a>
-            {{ warehouse.name }} - Mahsulotlar
-            <span class="badge bg-info ms-2">{{ products.count }} ta mahsulot</span>
-        </h2>
+    <h2 class="mb-4 text-center animate-slide-down">Omborlar</h2>
 
-        <div class="d-flex gap-2">
-            <a href="#" class="btn btn-primary btn-hover-scale" data-bs-toggle="modal" data-bs-target="#productModal" onclick="openProductModal('Yangi mahsulot qo\'shish')">
-                <i class="fas fa-plus me-1"></i> Yangi mahsulot
+    <!-- Tugmalar va qidiruv formasi -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap animate-slide-down">
+        <div class="mb-2 action-buttons">
+            <a href="#" class="btn btn-primary me-2 btn-hover-scale" data-bs-toggle="modal" data-bs-target="#warehouseModal" onclick="openWarehouseModal('Yangi ombor qo\'shish')">
+                <i class="fas fa-warehouse me-1"></i> Yangi ombor qo'shish
+            </a>
+            <a href="{% url 'category_create' %}" class="btn btn-primary me-2 btn-hover-scale">
+                <i class="fas fa-tags me-1"></i> Yangi kategoriya qo'shish
             </a>
         </div>
-    </div>
-
-    <!-- Filtr va qidiruv formasi -->
-    <div class="row mb-4 animate-slide-down">
-        <div class="col-md-6">
-            <form method="get" class="d-flex">
-                <input type="text" name="q" placeholder="Mahsulot nomi bo'yicha qidiring" value="{{ request.GET.q }}"
-                       class="form-control me-2 search-input">
+        <div class="search-form d-flex align-items-center mb-2">
+            <form method="get" id="search-form" class="d-flex animate-slide-left w-100">
+                <input type="text" name="q" placeholder="Ombor nomi bo'yicha qidiring" value="{{ request.GET.q }}"
+                       class="form-control me-2 search-input" style="width: 250px;">
                 <button type="submit" class="btn btn-primary btn-hover-scale">
                     <i class="fas fa-search me-1"></i> Qidirish
                 </button>
             </form>
         </div>
-        <div class="col-md-6 mt-2 mt-md-0">
-            <select class="form-select" id="category-filter">
-                <option value="">Barcha kategoriyalar</option>
-                {% for category in categories %}
-                <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
-                    {{ category.name }} ({{ category.product_count }})
-                </option>
-                {% endfor %}
-            </select>
-        </div>
     </div>
 
-    <!-- Mahsulotlar jadvali -->
-    <div class="card shadow-sm border-0 animate-fade-in">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Nomi</th>
-                            <th>Kategoriya</th>
-                            <th class="text-end">Miqdor</th>
-                            <th class="text-end">Min. miqdor</th>
-                            <th class="text-end">Narxi</th>
-                            <th class="text-center">Harakatlar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for product in products %}
-                        <tr data-product-id="{{ product.id }}" class="animate__animated animate__fadeIn">
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    {% if product.image %}
-                                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="rounded me-2" width="40" height="40">
-                                    {% else %}
-                                    <div class="rounded bg-light text-center me-2" style="width: 40px; height: 40px; line-height: 40px;">
-                                        <i class="fas fa-box text-muted"></i>
-                                    </div>
-                                    {% endif %}
-                                    <div>
-                                        <strong>{{ product.name }}</strong>
-                                        <div class="text-muted small">{{ product.code|default:"-" }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                {% if product.category %}
-                                <span class="badge bg-info">{{ product.category.name }}</span>
-                                {% else %}
-                                <span class="text-muted">Yo'q</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end {% if product.quantity < product.minimum_quantity %}text-danger{% endif %}">
-                                {{ product.quantity }} {{ product.unit }}
-                            </td>
-                            <td class="text-end">
-                                {{ product.minimum_quantity }} {{ product.unit }}
-                            </td>
-                            <td class="text-end">
-                                {{ product.price|floatformat:"0" }} so'm
-                            </td>
-                            <td class="text-center">
-                                <div class="d-flex justify-content-center gap-2">
-                                    <a href="#" class="btn btn-primary btn-sm edit-product-btn btn-hover-scale"
-                                       data-product-id="{{ product.id }}" data-bs-toggle="modal" data-bs-target="#productModal">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="#" class="btn btn-danger btn-sm delete-product-btn btn-hover-scale"
-                                       data-product-id="{{ product.id }}">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center py-4 animate-fade-in">
-                                <div class="alert alert-info">Mahsulotlar topilmadi.</div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <!-- Omborlar card ko'rinishida -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 animate-fade-in" id="warehouse-list">
+        {% if page_obj %}
+            {% for item in page_obj %}
+            <div class="col" data-warehouse-id="{{ item.warehouse.id|default:0 }}">
+                <div class="card h-100 shadow-sm border-0 card-hover">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title d-flex justify-content-between align-items-center mb-2">
+                            <a href="{% url 'warehouse_detail' item.warehouse.id|default:0 %}" class="text-decoration-none text-primary">
+                                {{ item.warehouse.name|default:"Noma'lum ombor" }}
+                            </a>
+                            <span class="badge bg-info text-white">{{ item.product_count|default:0 }} mahsulot</span>
+                        </h5>
+                        <p class="card-text mb-3 flex-grow-1"><strong>Yaratilgan sana:</strong> {{ item.warehouse.created_at|date:"Y-m-d H:i"|default:"Noma'lum" }}</p>
+                        <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
+                            <a href="{% url 'warehouse_detail' item.warehouse.id|default:0 %}" class="btn btn-success btn-sm btn-hover-scale">
+                                <i class="fas fa-sign-in-alt me-1"></i> Omborga kirish
+                            </a>
+                            <div class="d-flex gap-2">
+                                <a href="#" class="btn btn-primary btn-sm edit-warehouse-btn btn-hover-scale"
+                                   data-warehouse-id="{{ item.warehouse.id|default:0 }}" data-bs-toggle="modal" data-bs-target="#warehouseModal">
+                                    <i class="fas fa-edit me-1"></i> Tahrirlash
+                                </a>
+                                <a href="#" class="btn btn-danger btn-sm delete-warehouse-btn btn-hover-scale"
+                                   data-warehouse-id="{{ item.warehouse.id|default:0 }}">
+                                    <i class="fas fa-trash me-1"></i> O'chirish
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+            {% empty %}
+            <div class="col-12 text-center animate-fade-in">
+                <div class="alert alert-info">Bu sahifada omborlar topilmadi.</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center animate-fade-in">
+                <div class="alert alert-info">Omborlar topilmadi.</div>
+            </div>
+        {% endif %}
     </div>
 
     <!-- Pagination -->
@@ -123,7 +75,7 @@
             <ul class="pagination">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
                         « Oldingi
                     </a>
                 </li>
@@ -134,14 +86,14 @@
                     <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                     {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">{{ num }}</a>
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a>
                     </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
                         Keyingi »
                     </a>
                 </li>
@@ -151,96 +103,26 @@
     </div>
     {% endif %}
 
-    <!-- Mahsulot qo'shish/tahrirlash uchun modal -->
-    <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+    <!-- Ombor qo'shish/tahrirlash uchun modal -->
+    <div class="modal fade" id="warehouseModal" tabindex="-1" aria-labelledby="warehouseModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="productModalLabel">Yangi mahsulot qo'shish</h5>
+                    <h5 class="modal-title" id="warehouseModalLabel">Yangi ombor qo'shish</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="product-form" enctype="multipart/form-data">
+                    <form id="warehouse-form">
                         {% csrf_token %}
-                        <input type="hidden" name="product_id" id="product-id">
-                        <input type="hidden" name="warehouse_id" value="{{ warehouse.id }}">
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="product-name" class="form-label">Nomi *</label>
-                                    <input type="text" class="form-control animate-input-focus" id="product-name" name="name"
-                                           placeholder="Mahsulot nomini kiriting" required>
-                                    <div class="invalid-feedback">Iltimos, mahsulot nomini kiriting.</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="product-code" class="form-label">Kodi (ixtiyoriy)</label>
-                                    <input type="text" class="form-control animate-input-focus" id="product-code" name="code"
-                                           placeholder="Mahsulot kodini kiriting">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="product-category" class="form-label">Kategoriya</label>
-                                    <select class="form-select animate-input-focus" id="product-category" name="category">
-                                        <option value="">Kategoriyani tanlang</option>
-                                        {% for category in categories %}
-                                        <option value="{{ category.id }}">{{ category.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="product-quantity" class="form-label">Miqdor *</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01" class="form-control animate-input-focus" id="product-quantity" name="quantity"
-                                               placeholder="Miqdorni kiriting" required>
-                                        <select class="form-select animate-input-focus" id="product-unit" name="unit" style="max-width: 100px;">
-                                            <option value="dona">dona</option>
-                                            <option value="kg">kg</option>
-                                            <option value="litr">litr</option>
-                                            <option value="metr">metr</option>
-                                            <option value="quti">quti</option>
-                                        </select>
-                                    </div>
-                                    <div class="invalid-feedback">Iltimos, miqdorni kiriting.</div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="product-min-quantity" class="form-label">Minimal miqdor *</label>
-                                    <input type="number" step="0.01" class="form-control animate-input-focus" id="product-min-quantity" name="minimum_quantity"
-                                           placeholder="Minimal miqdorni kiriting" required>
-                                    <div class="invalid-feedback">Iltimos, minimal miqdorni kiriting.</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="product-price" class="form-label">Narxi (so'm) *</label>
-                                    <input type="number" class="form-control animate-input-focus" id="product-price" name="price"
-                                           placeholder="Narxni kiriting" required>
-                                    <div class="invalid-feedback">Iltimos, narxni kiriting.</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="product-description" class="form-label">Tavsif (ixtiyoriy)</label>
-                                    <textarea class="form-control animate-input-focus" id="product-description" name="description"
-                                              placeholder="Mahsulot haqida qisqacha tavsif" rows="2"></textarea>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="product-image" class="form-label">Rasm (ixtiyoriy)</label>
-                                    <input type="file" class="form-control animate-input-focus" id="product-image" name="image" accept="image/*">
-                                    <div class="invalid-feedback">Iltimos, to'g'ri formatdagi rasm tanlang.</div>
-                                    <div id="product-image-preview" class="mt-2 text-center" style="display: none;">
-                                        <img id="product-preview-img" src="#" alt="Rasm ko'rinishi" class="img-fluid rounded" style="max-height: 150px;">
-                                    </div>
-                                </div>
-                            </div>
+                        <input type="hidden" name="warehouse_id" id="warehouse-id">
+                        <div class="mb-3">
+                            <label for="warehouse-name" class="form-label">Ombor nomi</label>
+                            <input type="text" class="form-control animate-input-focus" id="warehouse-name" name="name"
+                                   placeholder="Ombor nomini kiriting" required>
+                            <div class="invalid-feedback">Iltimos, ombor nomini kiriting.</div>
                         </div>
-
-                        <div class="d-flex justify-content-between flex-wrap gap-2 mt-3">
-                            <button type="submit" class="btn btn-primary btn-hover-scale" id="save-product-btn">
+                        <div class="d-flex justify-content-between flex-wrap gap-2">
+                            <button type="submit" class="btn btn-primary btn-hover-scale" id="save-warehouse-btn">
                                 <i class="fas fa-save me-1"></i> Saqlash
                             </button>
                             <button type="button" class="btn btn-secondary btn-hover-scale" data-bs-dismiss="modal">
@@ -258,376 +140,267 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// Animatsiyalar uchun funktsiyalar
-function animateElement(element, animation, delay = 0) {
-    setTimeout(() => {
-        element.classList.add('animate__animated', `animate__${animation}`);
-    }, delay);
-}
-
-// Sahifa yuklanganda animatsiyalar
-document.addEventListener('DOMContentLoaded', function() {
-    const animatedElements = document.querySelectorAll('.animate-fade-in, .animate-slide-down');
-    animatedElements.forEach((el, index) => {
-        const delay = index * 100;
-        if (el.classList.contains('animate-fade-in')) {
-            animateElement(el, 'fadeIn', delay);
-        } else if (el.classList.contains('animate-slide-down')) {
-            animateElement(el, 'slideInDown', delay);
-        }
-    });
-});
-
-// Rasmni oldindan ko'rish
-document.getElementById('product-image').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    const preview = document.getElementById('product-preview-img');
-    const previewContainer = document.getElementById('product-image-preview');
-
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            previewContainer.style.display = 'block';
-        }
-        reader.readAsDataURL(file);
-    } else {
-        preview.src = '#';
-        previewContainer.style.display = 'none';
-    }
-});
-
-// Kategoriya bo'yicha filtr
-document.getElementById('category-filter').addEventListener('change', function() {
-    const categoryId = this.value;
-    const url = new URL(window.location.href);
-
-    if (categoryId) {
-        url.searchParams.set('category', categoryId);
-    } else {
-        url.searchParams.delete('category');
+    // Animatsiyalar uchun funktsiyalar
+    function animateElement(element, animation, delay = 0) {
+        setTimeout(() => {
+            element.classList.add('animate__animated', `animate__${animation}`);
+        }, delay);
     }
 
-    window.location.href = url.toString();
-});
-
-function openProductModal(title, productId = null, productData = null) {
-    const modal = $('#productModal');
-    const form = $('#product-form');
-    const saveBtn = $('#save-product-btn');
-
-    // Modal sarlavhasini o'rnatish
-    modal.find('.modal-title').text(title);
-
-    // Formani tozalash
-    form[0].reset();
-    $('#product-id').val(productId || '');
-    $('#product-image-preview').hide();
-    saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
-
-    // Agar productData bo'lsa, tahrirlash rejimi
-    if (productId && productData) {
-        $('#product-id').val(productId);
-        $('#product-name').val(productData.name || '');
-        $('#product-code').val(productData.code || '');
-        $('#product-category').val(productData.category || '');
-        $('#product-quantity').val(productData.quantity || '');
-        $('#product-unit').val(productData.unit || 'dona');
-        $('#product-min-quantity').val(productData.minimum_quantity || '');
-        $('#product-price').val(productData.price || '');
-        $('#product-description').val(productData.description || '');
-
-        if (productData.image_url) {
-            $('#product-preview-img').attr('src', productData.image_url);
-            $('#product-image-preview').show();
-        }
-
-        form.attr('action', '/inventory/product/edit/' + productId + '/');
-    } else {
-        // Yangi mahsulot qo'shish rejimi
-        form.attr('action', '{% url "product_create" %}');
-    }
-
-    modal.modal('show');
-}
-
-$(document).ready(function() {
-    // Input fokus animatsiyasi
-    $('.animate-input-focus').focus(function() {
-        $(this).addClass('focus-animate');
-    }).blur(function() {
-        $(this).removeClass('focus-animate');
+    // Sahifa yuklanganda animatsiyalar
+    document.addEventListener('DOMContentLoaded', function() {
+        const animatedElements = document.querySelectorAll('.animate-fade-in, .animate-slide-down, .animate-slide-left');
+        animatedElements.forEach((el, index) => {
+            const delay = index * 100;
+            if (el.classList.contains('animate-fade-in')) {
+                animateElement(el, 'fadeIn', delay);
+            } else if (el.classList.contains('animate-slide-down')) {
+                animateElement(el, 'slideInDown', delay);
+            } else if (el.classList.contains('animate-slide-left')) {
+                animateElement(el, 'slideInLeft', delay);
+            }
+        });
     });
 
-    // Mahsulot qo'shish/tahrirlash formasi
-    $('#product-form').submit(function(e) {
-        e.preventDefault();
-        const form = $(this);
-        const productName = $('#product-name').val().trim();
-        const productQuantity = $('#product-quantity').val().trim();
-        const productMinQuantity = $('#product-min-quantity').val().trim();
-        const productPrice = $('#product-price').val().trim();
-        const saveBtn = $('#save-product-btn');
+    function openWarehouseModal(title, warehouseId = null, warehouseData = null) {
+        const modal = $('#warehouseModal');
+        const form = $('#warehouse-form');
+        const saveBtn = $('#save-warehouse-btn');
 
-        // Validatsiya
-        let isValid = true;
+        // Modal sarlavhasini o'rnatish
+        modal.find('.modal-title').text(title);
 
-        if (!productName) {
-            $('#product-name').addClass('is-invalid');
-            isValid = false;
+        // Formani tozalash
+        form[0].reset();
+        $('#warehouse-id').val(warehouseId || '');
+        $('#warehouse-name').removeClass('is-invalid');
+        saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
+
+        // Agar warehouseData bo'lsa, tahrirlash rejimi
+        if (warehouseId && warehouseData) {
+            $('#warehouse-name').val(warehouseData.name);
+            form.attr('action', '/inventory/warehouse/edit/' + warehouseId + '/');
         } else {
-            $('#product-name').removeClass('is-invalid');
+            // Yangi ombor qo'shish rejimi
+            form.attr('action', '{% url 'warehouse_create' %}');
         }
 
-        if (!productQuantity) {
-            $('#product-quantity').addClass('is-invalid');
-            isValid = false;
-        } else {
-            $('#product-quantity').removeClass('is-invalid');
-        }
+        modal.modal('show');
+    }
 
-        if (!productMinQuantity) {
-            $('#product-min-quantity').addClass('is-invalid');
-            isValid = false;
-        } else {
-            $('#product-min-quantity').removeClass('is-invalid');
-        }
+    $(document).ready(function() {
+        // Input fokus animatsiyasi
+        $('.animate-input-focus').focus(function() {
+            $(this).addClass('focus-animate');
+        }).blur(function() {
+            $(this).removeClass('focus-animate');
+        });
 
-        if (!productPrice) {
-            $('#product-price').addClass('is-invalid');
-            isValid = false;
-        } else {
-            $('#product-price').removeClass('is-invalid');
-        }
+        // Ombor qo'shish/tahrirlash formasi
+        $('#warehouse-form').submit(function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const warehouseName = $('#warehouse-name').val().trim();
+            const saveBtn = $('#save-warehouse-btn');
 
-        if (!isValid) {
-            showToast('error', 'Iltimos, barcha majburiy maydonlarni to\'ldiring.');
-            return;
-        }
+            if (!warehouseName) {
+                $('#warehouse-name').addClass('is-invalid');
+                showToast('error', 'Iltimos, ombor nomini kiriting.');
+                return;
+            }
 
-        const url = form.attr('action');
-        saveBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saqlanmoqda...');
+            $('#warehouse-name').removeClass('is-invalid');
+            const url = form.attr('action');
+            saveBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saqlanmoqda...');
 
-        const formData = new FormData(form[0]);
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: {
+                    'name': warehouseName,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        const warehouse = response.warehouse;
+                        let card = $(`div[data-warehouse-id="${warehouse.id}"]`);
 
-        $.ajax({
-            url: url,
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                if (response.status === 'success') {
-                    const product = response.product;
-                    let row = $(`tr[data-product-id="${product.id}"]`);
-
-                    if (row.length) {
-                        // Tahrirlash
-                        row.find('td:eq(0)').html(`
-                            <div class="d-flex align-items-center">
-                                ${product.image_url ? `<img src="${product.image_url}" alt="${product.name}" class="rounded me-2" width="40" height="40">` :
-                                `<div class="rounded bg-light text-center me-2" style="width: 40px; height: 40px; line-height: 40px;">
-                                    <i class="fas fa-box text-muted"></i>
-                                </div>`}
-                                <div>
-                                    <strong>${product.name}</strong>
-                                    <div class="text-muted small">${product.code || '-'}</div>
-                                </div>
-                            </div>
-                        `);
-
-                        row.find('td:eq(1)').html(product.category ? `<span class="badge bg-info">${product.category}</span>` : '<span class="text-muted">Yo\'q</span>');
-
-                        row.find('td:eq(2)').html(`${product.quantity} ${product.unit}`)
-                            .toggleClass('text-danger', product.quantity < product.minimum_quantity);
-
-                        row.find('td:eq(3)').html(`${product.minimum_quantity} ${product.unit}`);
-                        row.find('td:eq(4)').html(`${product.price} so'm`);
-
-                        row.addClass('animate__animated animate__pulse');
-                        setTimeout(() => row.removeClass('animate__animated animate__pulse'), 1000);
-                    } else {
-                        // Qo'shish
-                        const newRow = $(`
-                            <tr data-product-id="${product.id}" class="animate__animated animate__zoomIn">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        ${product.image_url ? `<img src="${product.image_url}" alt="${product.name}" class="rounded me-2" width="40" height="40">` :
-                                        `<div class="rounded bg-light text-center me-2" style="width: 40px; height: 40px; line-height: 40px;">
-                                            <i class="fas fa-box text-muted"></i>
-                                        </div>`}
-                                        <div>
-                                            <strong>${product.name}</strong>
-                                            <div class="text-muted small">${product.code || '-'}</div>
+                        if (card.length) {
+                            // Tahrirlash
+                            card.find('.card-title a').text(warehouse.name).attr('href', '/inventory/warehouse/' + warehouse.id + '/');
+                            card.find('.card-text').html('<strong>Yaratilgan sana:</strong> ' + warehouse.created_at);
+                            card.find('.badge').text('0 mahsulot'); // Yangi omborlarda mahsulotlar soni 0 bo'ladi
+                            card.addClass('animate__animated animate__pulse');
+                            setTimeout(() => card.removeClass('animate__animated animate__pulse'), 1000);
+                        } else {
+                            // Qo'shish
+                            const newCard = $(`
+                                <div class="col" data-warehouse-id="${warehouse.id}">
+                                    <div class="card h-100 shadow-sm border-0 card-hover animate__animated animate__zoomIn">
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="card-title d-flex justify-content-between align-items-center mb-2">
+                                                <a href="/inventory/warehouse/${warehouse.id}/" class="text-decoration-none text-primary">${warehouse.name}</a>
+                                                <span class="badge bg-info text-white">0 mahsulot</span>
+                                            </h5>
+                                            <p class="card-text mb-3 flex-grow-1"><strong>Yaratilgan sana:</strong> ${warehouse.created_at}</p>
+                                            <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
+                                                <a href="/inventory/warehouse/${warehouse.id}/" class="btn btn-success btn-sm btn-hover-scale">
+                                                    <i class="fas fa-sign-in-alt me-1"></i> Omborga kirish
+                                                </a>
+                                                <div class="d-flex gap-2">
+                                                    <a href="#" class="btn btn-primary btn-sm edit-warehouse-btn btn-hover-scale"
+                                                       data-warehouse-id="${warehouse.id}" data-bs-toggle="modal" data-bs-target="#warehouseModal">
+                                                        <i class="fas fa-edit me-1"></i> Tahrirlash
+                                                    </a>
+                                                    <a href="#" class="btn btn-danger btn-sm delete-warehouse-btn btn-hover-scale"
+                                                       data-warehouse-id="${warehouse.id}">
+                                                        <i class="fas fa-trash me-1"></i> O'chirish
+                                                    </a>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </td>
-                                <td>
-                                    ${product.category ? `<span class="badge bg-info">${product.category}</span>` : '<span class="text-muted">Yo\'q</span>'}
-                                </td>
-                                <td class="text-end ${product.quantity < product.minimum_quantity ? 'text-danger' : ''}">
-                                    ${product.quantity} ${product.unit}
-                                </td>
-                                <td class="text-end">
-                                    ${product.minimum_quantity} ${product.unit}
-                                </td>
-                                <td class="text-end">
-                                    ${product.price} so'm
-                                </td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-2">
-                                        <a href="#" class="btn btn-primary btn-sm edit-product-btn btn-hover-scale"
-                                           data-product-id="${product.id}" data-bs-toggle="modal" data-bs-target="#productModal">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="#" class="btn btn-danger btn-sm delete-product-btn btn-hover-scale"
-                                           data-product-id="${product.id}">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        `);
-                        $('tbody').prepend(newRow);
-                    }
-
-                    $('#productModal').modal('hide');
-                    showToast('success', response.message);
-                } else {
-                    showToast('error', response.message || 'Mahsulot qo\'shishda xatolik yuz berdi.');
-                }
-            },
-            error: function(xhr) {
-                let errorMsg = 'Server bilan bog\'lanishda xatolik yuz berdi.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
-                } else if (xhr.status === 400) {
-                    errorMsg = 'Bu nomdagi mahsulot allaqachon mavjud.';
-                }
-                showToast('error', errorMsg);
-            },
-            complete: function() {
-                saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
-            }
-        });
-    });
-
-    // Tahrirlash tugmasi
-    $(document).on('click', '.edit-product-btn', function(e) {
-        e.preventDefault();
-        const productId = $(this).data('product-id');
-        $(this).addClass('animate__animated animate__rubberBand');
-        setTimeout(() => $(this).removeClass('animate__animated animate__rubberBand'), 1000);
-
-        $.ajax({
-            url: '/inventory/product/edit/' + productId + '/',
-            type: 'GET',
-            success: function(data) {
-                if (data.status === 'success') {
-                    openProductModal('Mahsulotni tahrirlash', productId, data.product);
-                } else {
-                    showToast('error', data.message || 'Mahsulot ma\'lumotlarini olishda xatolik yuz berdi.');
-                }
-            },
-            error: function(xhr) {
-                const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
-                showToast('error', errorMsg);
-            }
-        });
-    });
-
-    // Mahsulot o'chirish
-    $(document).on('click', '.delete-product-btn', function(e) {
-        e.preventDefault();
-        const productId = $(this).data('product-id');
-        const btn = $(this);
-        btn.addClass('animate__animated animate__headShake');
-        setTimeout(() => btn.removeClass('animate__animated animate__headShake'), 1000);
-
-        Swal.fire({
-            title: 'O\'chirishni tasdiqlaysizmi?',
-            html: `<p>Bu mahsulotni haqiqatan ham o'chirishni xohlaysizmi?</p>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Ha, o\'chirish',
-            cancelButtonText: 'Yo\'q, bekor qilish',
-            customClass: {
-                confirmButton: 'btn btn-danger me-2',
-                cancelButton: 'btn btn-secondary'
-            },
-            buttonsStyling: false,
-            showClass: {
-                popup: 'animate__animated animate__fadeInDown'
-            },
-            hideClass: {
-                popup: 'animate__animated animate__fadeOutUp'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '/inventory/product/delete/' + productId + '/',
-                    type: 'POST',
-                    data: { 'csrfmiddlewaretoken': '{{ csrf_token }}' },
-                    beforeSend: function() {
-                        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> O\'chirilmoqda...');
-                    },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            const row = $(`tr[data-product-id="${response.product_id}"]`);
-                            row.addClass('animate__animated animate__zoomOut');
-                            setTimeout(() => row.remove(), 500);
-                            showToast('success', response.message);
-                        } else {
-                            showToast('error', response.message || 'Mahsulotni o\'chirishda xatolik yuz berdi.');
+                                </div>
+                            `);
+                            $('#warehouse-list').prepend(newCard);
                         }
-                    },
-                    error: function(xhr) {
-                        const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
-                        showToast('error', errorMsg);
-                    },
-                    complete: function() {
-                        btn.prop('disabled', false).html('<i class="fas fa-trash"></i>');
+
+                        $('#warehouseModal').modal('hide');
+                        showToast('success', response.message);
+                    } else {
+                        showToast('error', response.message || 'Ombor qo\'shishda xatolik yuz berdi.');
                     }
-                });
-            }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    } else if (xhr.status === 400) {
+                        errorMsg = 'Bu nomdagi ombor allaqachon mavjud.';
+                    }
+                    showToast('error', errorMsg);
+                },
+                complete: function() {
+                    saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
+                }
+            });
+        });
+
+        // Tahrirlash tugmasi
+        $(document).on('click', '.edit-warehouse-btn', function(e) {
+            e.preventDefault();
+            const warehouseId = $(this).data('warehouse-id');
+            $(this).addClass('animate__animated animate__rubberBand');
+            setTimeout(() => $(this).removeClass('animate__animated animate__rubberBand'), 1000);
+
+            $.ajax({
+                url: '/inventory/warehouse/edit/' + warehouseId + '/',
+                type: 'GET',
+                success: function(data) {
+                    if (data.status === 'success') {
+                        openWarehouseModal('Omborni tahrirlash', warehouseId, data.form);
+                    } else {
+                        showToast('error', data.message || 'Ombor ma\'lumotlarini olishda xatolik yuz berdi.');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                    showToast('error', errorMsg);
+                }
+            });
+        });
+
+        // Ombor o'chirish
+        $(document).on('click', '.delete-warehouse-btn', function(e) {
+            e.preventDefault();
+            const warehouseId = $(this).data('warehouse-id');
+            const btn = $(this);
+            btn.addClass('animate__animated animate__headShake');
+            setTimeout(() => btn.removeClass('animate__animated animate__headShake'), 1000);
+
+            Swal.fire({
+                title: 'O\'chirishni tasdiqlaysizmi?',
+                html: `<p>Bu omborni haqiqatan ham o'chirishni xohlaysizmi?</p><p class="text-danger"><strong>Diqqat!</strong> Ombor bilan birga uning barcha mahsulotlari ham o'chib ketadi!</p>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ha, o\'chirish',
+                cancelButtonText: 'Yo\'q, bekor qilish',
+                customClass: {
+                    confirmButton: 'btn btn-danger me-2',
+                    cancelButton: 'btn btn-secondary'
+                },
+                buttonsStyling: false,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/inventory/warehouse/delete/' + warehouseId + '/',
+                        type: 'POST',
+                        data: { 'csrfmiddlewaretoken': '{{ csrf_token }}' },
+                        beforeSend: function() {
+                            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> O\'chirilmoqda...');
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                const card = $(`div[data-warehouse-id="${response.warehouse_id}"]`);
+                                card.addClass('animate__animated animate__zoomOut');
+                                setTimeout(() => card.remove(), 500);
+                                showToast('success', response.message);
+                            } else {
+                                showToast('error', response.message || 'Omborni o\'chirishda xatolik yuz berdi.');
+                            }
+                        },
+                        error: function(xhr) {
+                            const errorMsg = xhr.responseJSON?.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+                            showToast('error', errorMsg);
+                        },
+                        complete: function() {
+                            btn.prop('disabled', false).html('<i class="fas fa-trash me-1"></i> O\'chirish');
+                        }
+                    });
+                }
+            });
+        });
+
+        // Toast notification funktsiyasi
+        function showToast(icon, message) {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInRight'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutRight'
+                },
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            });
+
+            Toast.fire({
+                icon: icon,
+                title: message
+            });
+        }
+
+        // Modal yopilganda formani tozalash
+        $('#warehouseModal').on('hidden.bs.modal', function () {
+            $('#warehouse-form')[0].reset();
+            $('#warehouse-name').removeClass('is-invalid');
+            $('#warehouse-id').val('');
+            $('#save-warehouse-btn').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
         });
     });
-
-    // Toast notification funktsiyasi
-    function showToast(icon, message) {
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true,
-            showClass: {
-                popup: 'animate__animated animate__fadeInRight'
-            },
-            hideClass: {
-                popup: 'animate__animated animate__fadeOutRight'
-            },
-            didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer);
-                toast.addEventListener('mouseleave', Swal.resumeTimer);
-            }
-        });
-
-        Toast.fire({
-            icon: icon,
-            title: message
-        });
-    }
-
-    // Modal yopilganda formani tozalash
-    $('#productModal').on('hidden.bs.modal', function () {
-        $('#product-form')[0].reset();
-        $('#product-id').val('');
-        $('#product-image-preview').hide();
-        $('#product-name, #product-quantity, #product-min-quantity, #product-price').removeClass('is-invalid');
-        $('#save-product-btn').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Saqlash');
-    });
-});
 </script>
 
 <style>
@@ -734,21 +507,6 @@ $(document).ready(function() {
     border-color: #b02a37;
 }
 
-/* Table dizayni */
-.table-hover tbody tr:hover {
-    background-color: rgba(13, 110, 253, 0.05);
-}
-
-.table th {
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.table td, .table th {
-    vertical-align: middle;
-    padding: 12px;
-}
-
 /* Responsive stil */
 
 /* Mobil qurilmalar (576px gacha) */
@@ -758,12 +516,14 @@ $(document).ready(function() {
     }
 
     h2 {
-        font-size: 1.3rem;
+        font-size: 1.5rem;
     }
 
     .action-buttons {
         width: 100%;
-        margin-top: 15px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .action-buttons .btn {
@@ -774,6 +534,7 @@ $(document).ready(function() {
 
     .search-form {
         width: 100%;
+        margin-top: 15px;
     }
 
     .search-input {
@@ -785,27 +546,34 @@ $(document).ready(function() {
         margin-top: 10px;
     }
 
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .table th, .table td {
-        padding: 8px;
-        font-size: 0.85rem;
-    }
-
-    .table td {
-        white-space: nowrap;
+    .card-title {
+        flex-direction: column;
+        align-items: flex-start !important;
+        font-size: 1.1rem;
     }
 
     .badge {
+        margin-top: 5px;
         font-size: 0.75rem;
     }
 
+    .card-text {
+        font-size: 0.85rem;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 10px;
+    }
+
     .btn-sm {
-        font-size: 0.8rem;
-        padding: 5px 8px;
+        width: 100%;
+        font-size: 0.9rem;
+        padding: 8px;
     }
 
     .pagination .page-link {
@@ -838,7 +606,13 @@ $(document).ready(function() {
     }
 
     h2 {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .action-buttons .btn {
@@ -846,18 +620,44 @@ $(document).ready(function() {
         padding: 8px 12px;
     }
 
-    .table th, .table td {
-        padding: 10px;
-        font-size: 0.9rem;
+    .search-form {
+        width: 100%;
+        margin-top: 15px;
+    }
+
+    .search-input {
+        width: 100% !important;
+    }
+
+    .search-form .btn {
+        width: auto;
+        margin-left: 10px;
+    }
+
+    .card-title {
+        font-size: 1.15rem;
     }
 
     .badge {
         font-size: 0.8rem;
     }
 
+    .card-text {
+        font-size: 0.9rem;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
+
+    .d-flex.justify-content-between {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
     .btn-sm {
-        font-size: 0.85rem;
-        padding: 6px 10px;
+        font-size: 0.9rem;
+        padding: 8px;
     }
 
     .pagination .page-link {
@@ -876,12 +676,21 @@ $(document).ready(function() {
     }
 
     h2 {
-        font-size: 1.8rem;
+        font-size: 2rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
     }
 
     .action-buttons .btn {
         font-size: 1rem;
         padding: 10px 15px;
+    }
+
+    .search-form {
+        width: auto;
     }
 
     .search-input {
@@ -892,12 +701,24 @@ $(document).ready(function() {
         width: 300px !important;
     }
 
+    .card-title {
+        font-size: 1.25rem;
+    }
+
     .badge {
         font-size: 0.85rem;
     }
 
+    .card-text {
+        font-size: 0.95rem;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
     .btn-sm {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         padding: 8px 12px;
     }
 
@@ -906,7 +727,15 @@ $(document).ready(function() {
     }
 
     .modal-dialog {
-        max-width: 800px;
+        max-width: 500px;
+    }
+}
+
+/* Katta ekranlar (992px dan yuqori) */
+@media (min-width: 992px) {
+    .row-cols-lg-4 > .col {
+        flex: 0 0 25%;
+        max-width: 25%;
     }
 }
 </style>

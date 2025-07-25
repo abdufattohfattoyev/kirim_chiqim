@@ -7,8 +7,11 @@
     <!-- Tugmalar va qidiruv formasi -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap animate-slide-down">
         <div class="mb-2 action-buttons">
-            <a href="{% url 'kirim_create' %}" class="btn btn-primary me-2 btn-hover-scale">
+            <a href="{% url 'incoming_create' %}" class="btn btn-primary me-2 btn-hover-scale">
                 <i class="fas fa-plus me-1"></i> Yangi kirim qo'shish
+            </a>
+            <a href="{% url 'export_incomings_csv' %}" class="btn btn-outline-primary btn-hover-scale">
+                <i class="fas fa-file-export me-1"></i> CSV ga eksport
             </a>
         </div>
         <div class="search-form d-flex align-items-center mb-2">
@@ -21,12 +24,22 @@
                         </option>
                     {% endfor %}
                 </select>
-                <input type="date" name="date" class="form-control me-2" style="width: 150px;" value="{{ request.GET.date }}">
+                <select name="warehouse" class="form-select me-2" style="width: 200px;">
+                    <option value="">Barcha omborlar</option>
+                    {% for warehouse in warehouses %}
+                        <option value="{{ warehouse.id }}" {% if request.GET.warehouse == warehouse.id|stringformat:"s" %}selected{% endif %}>
+                            {{ warehouse.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="start_date" class="form-control me-2" style="width: 150px;" value="{{ request.GET.start_date }}">
+                <input type="date" name="end_date" class="form-control me-2" style="width: 150px;" value="{{ request.GET.end_date }}">
+                <input type="text" name="q" class="form-control me-2" style="width: 200px;" placeholder="Qidirish..." value="{{ query }}">
                 <button type="submit" class="btn btn-primary btn-hover-scale">
                     <i class="fas fa-search me-1"></i> Qidirish
                 </button>
-                {% if request.GET.supplier or request.GET.date %}
-                <a href="{% url 'kirim_list' %}" class="btn btn-outline-secondary ms-2 btn-hover-scale">
+                {% if request.GET.q or request.GET.supplier or request.GET.warehouse or request.GET.start_date or request.GET.end_date %}
+                <a href="{% url 'incoming_list' %}" class="btn btn-outline-secondary ms-2 btn-hover-scale">
                     <i class="fas fa-times me-1"></i> Tozalash
                 </a>
                 {% endif %}
@@ -42,7 +55,7 @@
                 <div class="card-body d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="card-title mb-0">
-                            <a href="#" class="text-decoration-none text-primary">
+                            <a href="{% url 'incoming_detail' kirim_id=kirim.id %}" class="text-decoration-none text-primary">
                                 Kirim #{{ kirim.id }}
                             </a>
                         </h5>
@@ -55,6 +68,10 @@
                         <div class="d-flex justify-content-between mb-1">
                             <span class="text-muted">Ta'minotchi:</span>
                             <span class="fw-bold">{% if kirim.supplier %}{{ kirim.supplier.name }}{% else %}---{% endif %}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Ombor:</span>
+                            <span class="fw-bold">{{ kirim.warehouse.name }}</span>
                         </div>
                         <div class="d-flex justify-content-between mb-1">
                             <span class="text-muted">Jami summa:</span>
@@ -73,14 +90,14 @@
                     </div>
 
                     <div class="d-flex justify-content-between mt-auto flex-wrap gap-2">
-                        <a href="#" class="btn btn-success btn-sm btn-hover-scale">
+                        <a href="{% url 'incoming_detail' kirim_id=kirim.id %}" class="btn btn-success btn-sm btn-hover-scale">
                             <i class="fas fa-eye me-1"></i> Batafsil
                         </a>
                         <div class="d-flex gap-2">
-                            <a href="#" class="btn btn-primary btn-sm btn-hover-scale">
+                            <a href="{% url 'incoming_edit' kirim_id=kirim.id %}" class="btn btn-primary btn-sm btn-hover-scale">
                                 <i class="fas fa-edit me-1"></i> Tahrirlash
                             </a>
-                            <a href="#" class="btn btn-danger btn-sm delete-kirim-btn btn-hover-scale"
+                            <a href="{% url 'incoming_delete' kirim_id=kirim.id %}" class="btn btn-danger btn-sm delete-kirim-btn btn-hover-scale"
                                data-kirim-id="{{ kirim.id }}">
                                 <i class="fas fa-trash me-1"></i> O'chirish
                             </a>
@@ -103,7 +120,7 @@
             <ul class="pagination">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.warehouse %}&warehouse={{ request.GET.warehouse }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
                         « Oldingi
                     </a>
                 </li>
@@ -114,14 +131,14 @@
                     <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                     {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ num }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">{{ num }}</a>
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.warehouse %}&warehouse={{ request.GET.warehouse }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if query %}&q={{ query }}{% endif %}">{{ num }}</a>
                     </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}{% if request.GET.warehouse %}&warehouse={{ request.GET.warehouse }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
                         Keyingi »
                     </a>
                 </li>
@@ -199,7 +216,7 @@ $(document).ready(function() {
         setTimeout(() => btn.removeClass('animate__animated animate__headShake'), 1000);
 
         // Modalni sozlash
-        $('#confirmDeleteKirim').attr('href', '/kirim/delete/' + kirimId + '/');
+        $('#confirmDeleteKirim').attr('href', `/inventory/incomings/delete/${kirimId}/`);
         $('#deleteKirimModal').modal('show');
     });
 
@@ -212,8 +229,8 @@ $(document).ready(function() {
         $.ajax({
             url: url,
             type: 'POST',
-            data: {
-                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
             },
             beforeSend: function() {
                 modal.find('.btn').prop('disabled', true);
@@ -304,11 +321,6 @@ $(document).ready(function() {
 .animate-input-focus.focus-animate {
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     border-color: #86b7fe;
-}
-
-/* Search input animatsiyasi */
-.search-input {
-    transition: all 0.5s ease;
 }
 
 /* Modal animatsiyasi */

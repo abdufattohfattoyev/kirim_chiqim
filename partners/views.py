@@ -1,388 +1,697 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.db import transaction
+from django.http import HttpResponse, JsonResponse
+from django.utils.dateparse import parse_date
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+import csv
+import pandas as pd
+import logging
+
 from .models import Supplier, Customer, SupplierPayment, CustomerPayment
 from .forms import SupplierForm, CustomerForm, SupplierPaymentForm, CustomerPaymentForm
-from django.db.models import Q
-from django.core.paginator import Paginator
-from django.utils.dateparse import parse_date
-from django.contrib import messages
-import csv
-from django.http import HttpResponse, JsonResponse
-import pandas as pd
-from django.db import transaction
 
+logger = logging.getLogger(__name__)
+
+
+# ============= SUPPLIER VIEWS =============
 
 @login_required
 def supplier_list(request):
-    query = request.GET.get('q')
-    suppliers = Supplier.objects.all()
+    """Ta'minotchilar ro'yxati"""
+    query = request.GET.get('q', '').strip()
+    sort_by = request.GET.get('sort', 'name')
+
+    # Validatsiya
+    valid_sort_fields = ['name', 'phone_number', 'created_at', '-created_at']
+    if sort_by not in valid_sort_fields:
+        sort_by = 'name'
+
+    suppliers = Supplier.objects.select_related('created_by').filter(is_active=True)
+
     if query:
         suppliers = suppliers.filter(
-            Q(name__icontains=query) | Q(phone_number__icontains=query)
+            Q(name__icontains=query) |
+            Q(phone_number__icontains=query) |
+            Q(company_name__icontains=query)
         )
-    paginator = Paginator(suppliers, 10)
+
+    suppliers = suppliers.order_by(sort_by)
+
+    paginator = Paginator(suppliers, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'partners/supplier_list.html', {'page_obj': page_obj, 'query': query})
+
+    context = {
+        'page_obj': page_obj,
+        'query': query,
+        'sort': sort_by,
+        'total_count': suppliers.count()
+    }
+
+    return render(request, 'partners/supplier_list.html', context)
+
+
+@login_required
+def supplier_create(request):
+    """Yangi ta'minotchi yaratish"""
+    if request.method == 'POST':
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    supplier = form.save(commit=False)
+                    supplier.created_by = request.user
+                    supplier.save()
+
+                messages.success(request, "Ta'minotchi muvaffaqiyatli qo'shildi.")
+                return redirect('supplier_list')
+
+            except Exception as e:
+                logger.error(f"Supplier yaratishda xatolik: {e}")
+                messages.error(request, "Xatolik yuz berdi. Qaytadan urinib ko'ring.")
+        else:
+            messages.error(request, "Forma ma'lumotlarini to'g'ri to'ldiring.")
+    else:
+        form = SupplierForm()
+
+    return render(request, 'partners/supplier_form.html', {
+        'form': form,
+        'title': "Yangi ta'minotchi qo'shish"
+    })
 
 
 @login_required
 def supplier_edit(request, pk):
-    supplier = Supplier.objects.get(pk=pk)
+    """Ta'minotchini tahrirlash"""
+    supplier = get_object_or_404(Supplier, pk=pk, is_active=True)
+
     if request.method == 'POST':
         form = SupplierForm(request.POST, instance=supplier)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Ta\'minotchi muvaffaqiyatli tahrirlandi.')
-            return redirect('supplier_list')
+            try:
+                form.save()
+                messages.success(request, "Ta'minotchi muvaffaqiyatli tahrirlandi.")
+                return redirect('supplier_list')
+            except Exception as e:
+                logger.error(f"Supplier tahrirlashda xatolik: {e}")
+                messages.error(request, "Xatolik yuz berdi. Qaytadan urinib ko'ring.")
         else:
-            messages.error(request, 'Forma to‘ldirishda xatolik yuz berdi.')
+            messages.error(request, "Forma ma'lumotlarini to'g'ri to'ldiring.")
     else:
         form = SupplierForm(instance=supplier)
-    return render(request, 'partners/supplier_form.html', {'form': form})
+
+    return render(request, 'partners/supplier_form.html', {
+        'form': form,
+        'supplier': supplier,
+        'title': f"{supplier.name}ni tahrirlash"
+    })
+
 
 @login_required
+@require_http_methods(["POST"])
 def supplier_delete(request, pk):
-    supplier = Supplier.objects.get(pk=pk)
-    if request.method == 'POST':
-        supplier.delete()
-        messages.success(request, 'Ta\'minotchi muvaffaqiyatli o‘chirildi.')
-        return redirect('supplier_list')
-    return render(request, 'partners/supplier_confirm_delete.html', {'supplier': supplier})
+    """Ta'minotchini o'chirish (soft delete)"""
+    supplier = get_object_or_404(Supplier, pk=pk, is_active=True)
+
+    try:
+        # Soft delete
+        supplier.is_active = False
+        supplier.save()
+
+        messages.success(request, f"{supplier.name} muvaffaqiyatli o'chirildi.")
+    except Exception as e:
+        logger.error(f"Supplier o'chirishda xatolik: {e}")
+        messages.error(request, "Xatolik yuz berdi. Qaytadan urinib ko'ring.")
+
+    return redirect('supplier_list')
+
 
 @login_required
 def export_suppliers_csv(request):
-    response = HttpResponse(content_type='text/csv')
+    """Ta'minotchilarni CSV formatida eksport qilish"""
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="suppliers.csv"'
 
-    writer = csv.writer(response)
-    writer.writerow(['Nomi', 'Telefon', 'Manzil', 'Dastlabki qarz'])
+    # UTF-8 BOM qo'shish Excel uchun
+    response.write('\ufeff')
 
-    suppliers = Supplier.objects.all()
+    writer = csv.writer(response)
+    writer.writerow([
+        'Nomi', 'Telefon', 'Email', 'Manzil',
+        'Kompaniya', 'INN', 'Dastlabki qarz', 'Joriy balans'
+    ])
+
+    suppliers = Supplier.objects.filter(is_active=True).select_related('created_by')
+
     for supplier in suppliers:
-        writer.writerow([supplier.name, supplier.phone_number, supplier.address or '-', supplier.initial_debt])
+        writer.writerow([
+            supplier.name,
+            supplier.phone_number,
+            supplier.email or '',
+            supplier.address or '',
+            supplier.company_name or '',
+            supplier.inn or '',
+            supplier.initial_debt,
+            supplier.balance
+        ])
 
     return response
 
 
 @login_required
 def import_suppliers_csv(request):
+    """CSV orqali ta'minotchilarni import qilish"""
     if request.method == 'POST':
         csv_file = request.FILES.get('csv_file')
+
+        if not csv_file:
+            messages.error(request, 'Fayl tanlanmagan.')
+            return redirect('supplier_list')
+
         if not csv_file.name.endswith('.csv'):
             messages.error(request, 'Faqat CSV fayllarni yuklash mumkin.')
             return redirect('supplier_list')
 
         try:
-            data = pd.read_csv(csv_file)
+            # Pandas bilan CSV o'qish
+            data = pd.read_csv(csv_file, encoding='utf-8')
+
+            required_columns = ['Nomi', 'Telefon']
+            missing_columns = [col for col in required_columns if col not in data.columns]
+
+            if missing_columns:
+                messages.error(request, f"Quyidagi ustunlar topilmadi: {', '.join(missing_columns)}")
+                return redirect('supplier_list')
+
+            created_count = 0
+            updated_count = 0
+
             with transaction.atomic():
-                for _, row in data.iterrows():
-                    Supplier.objects.update_or_create(
-                        name=row['Nomi'],
-                        defaults={
-                            'phone_number': row['Telefon'],
-                            'address': row.get('Manzil', ''),
-                            'initial_debt': row.get('Dastlabki qarz', 0),
-                            'created_by': request.user
-                        }
-                    )
-            messages.success(request, 'Ta\'minotchilar muvaffaqiyatli import qilindi.')
+                for index, row in data.iterrows():
+                    try:
+                        supplier, created = Supplier.objects.update_or_create(
+                            phone_number=row['Telefon'],
+                            defaults={
+                                'name': row['Nomi'],
+                                'email': row.get('Email', ''),
+                                'address': row.get('Manzil', ''),
+                                'company_name': row.get('Kompaniya', ''),
+                                'inn': row.get('INN', ''),
+                                'initial_debt': row.get('Dastlabki qarz', 0),
+                                'created_by': request.user,
+                                'is_active': True
+                            }
+                        )
+
+                        if created:
+                            created_count += 1
+                        else:
+                            updated_count += 1
+
+                    except Exception as e:
+                        logger.error(f"Qator {index + 1} da xatolik: {e}")
+                        continue
+
+            messages.success(
+                request,
+                f"Import muvaffaqiyatli yakunlandi. "
+                f"Yangi qo'shildi: {created_count}, Yangilandi: {updated_count}"
+            )
+
         except Exception as e:
-            messages.error(request, f'Import xatosi: {str(e)}')
+            logger.error(f"CSV import xatolik: {e}")
+            messages.error(request, f"Import jarayonida xatolik: {str(e)}")
+
         return redirect('supplier_list')
 
     return render(request, 'partners/import_suppliers.html')
 
 
+# ============= CUSTOMER VIEWS =============
+
 @login_required
-def supplier_create(request):
+def customer_list(request):
+    """Xaridorlar ro'yxati"""
+    query = request.GET.get('q', '').strip()
+    sort_by = request.GET.get('sort', 'name')
+
+    valid_sort_fields = ['name', 'phone_number', 'created_at', '-created_at', 'balance']
+    if sort_by not in valid_sort_fields:
+        sort_by = 'name'
+
+    customers = Customer.objects.select_related('created_by').filter(is_active=True)
+
+    if query:
+        customers = customers.filter(
+            Q(name__icontains=query) |
+            Q(phone_number__icontains=query) |
+            Q(company_name__icontains=query) |
+            Q(notes__icontains=query)
+        )
+
+    customers = customers.order_by(sort_by)
+
+    paginator = Paginator(customers, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'query': query,
+        'sort': sort_by,
+        'customer_form': CustomerForm(),
+        'total_count': customers.count()
+    }
+
+    return render(request, 'partners/customer_list.html', context)
+
+
+@login_required
+def customer_create(request):
+    """Yangi xaridor yaratish"""
     if request.method == 'POST':
-        form = SupplierForm(request.POST)
+        form = CustomerForm(request.POST)
         if form.is_valid():
-            supplier = form.save(commit=False)
-            supplier.created_by = request.user
-            supplier.save()
-            messages.success(request, 'Ta\'minotchi muvaffaqiyatli qo‘shildi.')
-            return redirect('supplier_list')
+            try:
+                with transaction.atomic():
+                    customer = form.save(commit=False)
+                    customer.created_by = request.user
+                    customer.save()
+
+                # AJAX so'rov bo'lsa JSON javob
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': "Xaridor muvaffaqiyatli qo'shildi.",
+                        'customer': {
+                            'id': customer.id,
+                            'name': customer.name,
+                            'phone_number': customer.phone_number,
+                            'balance': float(customer.balance),
+                        }
+                    })
+
+                messages.success(request, "Xaridor muvaffaqiyatli qo'shildi.")
+                return redirect('customer_list')
+
+            except Exception as e:
+                logger.error(f"Customer yaratishda xatolik: {e}")
+                error_msg = "Xatolik yuz berdi. Qaytadan urinib ko'ring."
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': error_msg
+                    }, status=500)
+
+                messages.error(request, error_msg)
         else:
-            print(form.errors)  # Xatolarni konsolga chiqarish
-            messages.error(request, 'Forma to‘ldirishda xatolik yuz berdi.')
+            # Form xatoliklari
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = []
+                for field, field_errors in form.errors.items():
+                    for error in field_errors:
+                        errors.append(f"{field}: {error}")
+
+                return JsonResponse({
+                    'status': 'error',
+                    'message': "Forma ma'lumotlarini to'g'ri to'ldiring.",
+                    'errors': errors
+                }, status=400)
+
+            messages.error(request, "Forma ma'lumotlarini to'g'ri to'ldiring.")
     else:
-        form = SupplierForm()
-    return render(request, 'partners/supplier_form.html', {'form': form})
+        form = CustomerForm()
+
+    return render(request, 'partners/customer_form.html', {
+        'form': form,
+        'title': "Yangi xaridor qo'shish"
+    })
+
+
+@login_required
+def customer_edit(request, pk):
+    """Xaridorni tahrirlash"""
+    customer = get_object_or_404(Customer, pk=pk, is_active=True)
+
+    if request.method == 'POST':
+        form = CustomerForm(request.POST, instance=customer)
+        if form.is_valid():
+            try:
+                customer = form.save()
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Xaridor muvaffaqiyatli tahrirlandi.',
+                        'customer': {
+                            'id': customer.id,
+                            'name': customer.name,
+                            'phone_number': customer.phone_number,
+                            'balance': float(customer.balance),
+                        }
+                    })
+
+                messages.success(request, 'Xaridor muvaffaqiyatli tahrirlandi.')
+                return redirect('customer_list')
+
+            except Exception as e:
+                logger.error(f"Customer tahrirlashda xatolik: {e}")
+                error_msg = "Xatolik yuz berdi. Qaytadan urinib ko'ring."
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': error_msg
+                    }, status=500)
+
+                messages.error(request, error_msg)
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = []
+                for field, field_errors in form.errors.items():
+                    for error in field_errors:
+                        errors.append(f"{field}: {error}")
+
+                return JsonResponse({
+                    'status': 'error',
+                    'message': "Forma ma'lumotlarini to'g'ri to'ldiring.",
+                    'errors': errors
+                }, status=400)
+
+            messages.error(request, "Forma ma'lumotlarini to'g'ri to'ldiring.")
+    else:
+        form = CustomerForm(instance=customer)
+
+        # AJAX so'rov bo'lsa form ma'lumotlarini qaytarish
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success',
+                'form_data': {
+                    'name': customer.name,
+                    'phone_number': customer.phone_number,
+                    'email': customer.email or '',
+                    'address': customer.address or '',
+                    'company_name': customer.company_name or '',
+                    'inn': customer.inn or '',
+                    'initial_debt': float(customer.initial_debt),
+                    'credit_limit': float(customer.credit_limit),
+                    'discount_percent': float(customer.discount_percent),
+                    'notes': customer.notes or '',
+                }
+            })
+
+    return render(request, 'partners/customer_form.html', {
+        'form': form,
+        'customer': customer,
+        'title': f"{customer.name}ni tahrirlash"
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def customer_delete(request, pk):
+    """Xaridorni o'chirish"""
+    customer = get_object_or_404(Customer, pk=pk, is_active=True)
+
+    try:
+        # Soft delete
+        customer.is_active = False
+        customer.save()
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success',
+                'message': f"{customer.name} muvaffaqiyatli o'chirildi.",
+                'customer_id': pk
+            })
+
+        messages.success(request, f"{customer.name} muvaffaqiyatli o'chirildi.")
+
+    except Exception as e:
+        logger.error(f"Customer o'chirishda xatolik: {e}")
+        error_msg = "Xatolik yuz berdi. Qaytadan urinib ko'ring."
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': error_msg
+            }, status=500)
+
+        messages.error(request, error_msg)
+
+    return redirect('customer_list')
 
 
 @login_required
 def export_customers_csv(request):
-    response = HttpResponse(content_type='text/csv')
+    """Xaridorlarni CSV formatida eksport qilish"""
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="customers.csv"'
 
-    writer = csv.writer(response)
-    writer.writerow(['Nomi', 'Telefon', 'Manzil', 'Dastlabki qarz'])
+    # UTF-8 BOM qo'shish
+    response.write('\ufeff')
 
-    customers = Customer.objects.all()
+    writer = csv.writer(response)
+    writer.writerow([
+        'Nomi', 'Telefon', 'Email', 'Manzil', 'Kompaniya',
+        'INN', 'Dastlabki qarz', 'Kredit limiti',
+        'Chegirma foizi', 'Joriy balans', 'Izoh'
+    ])
+
+    customers = Customer.objects.filter(is_active=True).select_related('created_by')
+
     for customer in customers:
-        writer.writerow([customer.name, customer.phone_number, customer.address or '-', customer.initial_debt])
+        writer.writerow([
+            customer.name,
+            customer.phone_number,
+            customer.email or '',
+            customer.address or '',
+            customer.company_name or '',
+            customer.inn or '',
+            customer.initial_debt,
+            customer.credit_limit,
+            customer.discount_percent,
+            customer.balance,
+            customer.notes or ''
+        ])
 
     return response
 
 
 @login_required
 def import_customers_csv(request):
+    """CSV orqali xaridorlarni import qilish"""
     if request.method == 'POST':
         csv_file = request.FILES.get('csv_file')
+
+        if not csv_file:
+            messages.error(request, 'Fayl tanlanmagan.')
+            return redirect('customer_list')
+
         if not csv_file.name.endswith('.csv'):
             messages.error(request, 'Faqat CSV fayllarni yuklash mumkin.')
             return redirect('customer_list')
 
         try:
-            data = pd.read_csv(csv_file)
+            data = pd.read_csv(csv_file, encoding='utf-8')
+
+            required_columns = ['Nomi', 'Telefon']
+            missing_columns = [col for col in required_columns if col not in data.columns]
+
+            if missing_columns:
+                messages.error(request, f"Quyidagi ustunlar topilmadi: {', '.join(missing_columns)}")
+                return redirect('customer_list')
+
+            created_count = 0
+            updated_count = 0
+
             with transaction.atomic():
-                for _, row in data.iterrows():
-                    Customer.objects.update_or_create(
-                        name=row['Nomi'],
-                        defaults={
-                            'phone_number': row['Telefon'],
-                            'address': row.get('Manzil', ''),
-                            'initial_debt': row.get('Dastlabki qarz', 0),
-                            'created_by': request.user
-                        }
-                    )
-            messages.success(request, 'Xaridorlar muvaffaqiyatli import qilindi.')
+                for index, row in data.iterrows():
+                    try:
+                        customer, created = Customer.objects.update_or_create(
+                            phone_number=row['Telefon'],
+                            defaults={
+                                'name': row['Nomi'],
+                                'email': row.get('Email', ''),
+                                'address': row.get('Manzil', ''),
+                                'company_name': row.get('Kompaniya', ''),
+                                'inn': row.get('INN', ''),
+                                'initial_debt': row.get('Dastlabki qarz', 0),
+                                'credit_limit': row.get('Kredit limiti', 0),
+                                'discount_percent': row.get('Chegirma foizi', 0),
+                                'notes': row.get('Izoh', ''),
+                                'created_by': request.user,
+                                'is_active': True
+                            }
+                        )
+
+                        if created:
+                            created_count += 1
+                        else:
+                            updated_count += 1
+
+                    except Exception as e:
+                        logger.error(f"Qator {index + 1} da xatolik: {e}")
+                        continue
+
+            messages.success(
+                request,
+                f"Import muvaffaqiyatli yakunlandi. "
+                f"Yangi qo'shildi: {created_count}, Yangilandi: {updated_count}"
+            )
+
         except Exception as e:
-            messages.error(request, f'Import xatosi: {str(e)}')
+            logger.error(f"CSV import xatolik: {e}")
+            messages.error(request, f"Import jarayonida xatolik: {str(e)}")
+
         return redirect('customer_list')
 
     return render(request, 'partners/import_customers.html')
 
 
-@login_required
-def customer_list(request):
-    query = request.GET.get('q', '')
-    sort = request.GET.get('sort', 'name')
-    customers = Customer.objects.all()
-
-    if query:
-        customers = customers.filter(
-            Q(name__icontains=query) |
-            Q(phone_number__icontains=query) |
-            Q(notes__icontains=query)
-        )
-
-    customers = customers.order_by(sort)
-    paginator = Paginator(customers, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    customer_form = CustomerForm()
-    return render(request, 'partners/customer_list.html', {
-        'page_obj': page_obj,
-        'query': query,
-        'sort': sort,
-        'customer_form': customer_form,
-    })
-
-
-@login_required
-def customer_create(request):
-    if request.method == 'POST':
-        form = CustomerForm(request.POST)
-        if form.is_valid():
-            customer = form.save(commit=False)
-            customer.created_by = request.user
-            customer.save()
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'status': 'success',
-                    'message': 'Xaridor muvaffaqiyatli qo‘shildi.',
-                    'customer': {
-                        'id': customer.id,
-                        'name': customer.name,
-                        'phone_number': customer.phone_number,
-                        'notes': customer.notes,
-                        'balance': float(customer.balance),
-                    }
-                })
-            messages.success(request, 'Xaridor muvaffaqiyatli qo‘shildi.')
-            return redirect('customer_list')
-        else:
-            # Xato xabarlarini aniqroq qaytarish
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                error_messages = []
-                for field, errors in form.errors.items():
-                    for error in errors:
-                        error_messages.append(f"{field}: {error}")
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Forma to‘ldirishda xatolik yuz berdi.',
-                    'errors': error_messages
-                }, status=400)
-            messages.error(request, f'Forma to‘ldirishda xatolik: {form.errors}')
-    else:
-        form = CustomerForm()
-    return render(request, 'partners/customer_list.html', {
-        'form': form,
-        'customer_form': form
-    })
-
-@login_required
-def customer_edit(request, pk):
-    customer = get_object_or_404(Customer, pk=pk)
-    if request.method == 'POST':
-        form = CustomerForm(request.POST, instance=customer)
-        if form.is_valid():
-            customer = form.save()
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'status': 'success',
-                    'message': 'Xaridor muvaffaqiyatli tahrirlandi.',
-                    'customer': {
-                        'id': customer.id,
-                        'name': customer.name,
-                        'phone_number': customer.phone_number,
-                        'notes': customer.notes,
-                        'balance': float(customer.balance),
-                    }
-                })
-            messages.success(request, 'Xaridor muvaffaqiyatli tahrirlandi.')
-            return redirect('customer_list')
-        else:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                error_messages = []
-                for field, errors in form.errors.items():
-                    for error in errors:
-                        error_messages.append(f"{field}: {error}")
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Forma to‘ldirishda xatolik yuz berdi.',
-                    'errors': error_messages
-                }, status=400)
-            messages.error(request, f'Forma to‘ldirishda xatolik: {form.errors}')
-    else:
-        form = CustomerForm(instance=customer)
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({
-                'status': 'success',
-                'form': {
-                    'name': customer.name,
-                    'phone_number': customer.phone_number,
-                    'notes': customer.notes,
-                    'initial_debt': float(customer.initial_debt),
-                }
-            })
-    return render(request, 'partners/customer_list.html', {
-        'form': form,
-        'customer_form': form,
-        'customer': customer
-    })
-
-@login_required
-def customer_delete(request, pk):
-    customer = get_object_or_404(Customer, pk=pk)
-    if request.method == 'POST':
-        customer.delete()
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Xaridor muvaffaqiyatli o‘chirildi.',
-                'customer_id': pk
-            })
-        messages.success(request, 'Xaridor muvaffaqiyatli o‘chirildi.')
-        return redirect('customer_list')
-    return render(request, 'partners/customer_confirm_delete.html', {'customer': customer})
-
+# ============= PAYMENT VIEWS =============
 
 @login_required
 def supplier_payment_create(request):
+    """Ta'minotchiga to'lov yaratish"""
     if request.method == 'POST':
         form = SupplierPaymentForm(request.POST)
         if form.is_valid():
-            payment = form.save(commit=False)
-            payment.created_by = request.user
-            payment.save()
-            messages.success(request, 'To‘lov muvaffaqiyatli qo‘shildi.')
-            return redirect('supplier_payment_list')
+            try:
+                with transaction.atomic():
+                    payment = form.save(commit=False)
+                    payment.created_by = request.user
+                    payment.save()
+
+                messages.success(request, "To'lov muvaffaqiyatli qo'shildi.")
+                return redirect('supplier_payment_list')
+
+            except Exception as e:
+                logger.error(f"Supplier payment yaratishda xatolik: {e}")
+                messages.error(request, "Xatolik yuz berdi. Qaytadan urinib ko'ring.")
         else:
-            messages.error(request, 'Forma to‘ldirishda xatolik yuz berdi.')
+            messages.error(request, "Forma ma'lumotlarini to'g'ri to'ldiring.")
     else:
         form = SupplierPaymentForm()
-    return render(request, 'partners/supplier_payment_form.html', {'form': form})
+
+    return render(request, 'partners/supplier_payment_form.html', {
+        'form': form,
+        'title': "Yangi ta'minotchi to'lovi"
+    })
 
 
 @login_required
 def supplier_payment_list(request):
-    query = request.GET.get('q')
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    """Ta'minotchi to'lovlari ro'yxati"""
+    query = request.GET.get('q', '').strip()
+    start_date_str = request.GET.get('start_date', '')
+    end_date_str = request.GET.get('end_date', '')
 
-    payments = SupplierPayment.objects.all().order_by('-date')
+    payments = SupplierPayment.objects.select_related('supplier', 'created_by').order_by('-date', '-created_at')
 
     if query:
         payments = payments.filter(
-            Q(supplier__name__icontains=query) | Q(note__icontains=query)
+            Q(supplier__name__icontains=query) |
+            Q(note__icontains=query) |
+            Q(reference_number__icontains=query)
         )
 
-    if start_date and end_date:
-        start_date = parse_date(start_date)
-        end_date = parse_date(end_date)
-        payments = payments.filter(date__range=[start_date, end_date])
+    # Sana filtri
+    if start_date_str and end_date_str:
+        try:
+            start_date = parse_date(start_date_str)
+            end_date = parse_date(end_date_str)
+            if start_date and end_date:
+                payments = payments.filter(date__range=[start_date, end_date])
+        except ValueError:
+            messages.warning(request, "Sana formati noto'g'ri.")
 
-    paginator = Paginator(payments, 10)
+    paginator = Paginator(payments, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     context = {
         'page_obj': page_obj,
         'query': query,
-        'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
-        'end_date': end_date.strftime('%Y-%m-%d') if end_date else '',
+        'start_date': start_date_str,
+        'end_date': end_date_str,
+        'total_count': payments.count()
     }
+
     return render(request, 'partners/supplier_payment_list.html', context)
 
 
 @login_required
 def customer_payment_create(request):
+    """Xaridordan to'lov yaratish"""
     if request.method == 'POST':
         form = CustomerPaymentForm(request.POST)
         if form.is_valid():
-            payment = form.save(commit=False)
-            payment.created_by = request.user
-            payment.save()
-            messages.success(request, 'To‘lov muvaffaqiyatli qo‘shildi.')
-            return redirect('customer_payment_list')
+            try:
+                with transaction.atomic():
+                    payment = form.save(commit=False)
+                    payment.created_by = request.user
+                    payment.save()
+
+                messages.success(request, "To'lov muvaffaqiyatli qo'shildi.")
+                return redirect('customer_payment_list')
+
+            except Exception as e:
+                logger.error(f"Customer payment yaratishda xatolik: {e}")
+                messages.error(request, "Xatolik yuz berdi. Qaytadan urinib ko'ring.")
         else:
-            messages.error(request, 'Forma to‘ldirishda xatolik yuz berdi.')
+            messages.error(request, "Forma ma'lumotlarini to'g'ri to'ldiring.")
     else:
         form = CustomerPaymentForm()
-    return render(request, 'partners/customer_payment_form.html', {'form': form})
+
+    return render(request, 'partners/customer_payment_form.html', {
+        'form': form,
+        'title': "Yangi xaridor to'lovi"
+    })
 
 
 @login_required
 def customer_payment_list(request):
-    query = request.GET.get('q')
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    """Xaridor to'lovlari ro'yxati"""
+    query = request.GET.get('q', '').strip()
+    start_date_str = request.GET.get('start_date', '')
+    end_date_str = request.GET.get('end_date', '')
 
-    payments = CustomerPayment.objects.all().order_by('-date')
+    payments = CustomerPayment.objects.select_related('customer', 'created_by').order_by('-date', '-created_at')
 
     if query:
         payments = payments.filter(
-            Q(customer__name__icontains=query) | Q(note__icontains=query)
+            Q(customer__name__icontains=query) |
+            Q(note__icontains=query) |
+            Q(reference_number__icontains=query)
         )
 
-    if start_date and end_date:
-        start_date = parse_date(start_date)
-        end_date = parse_date(end_date)
-        payments = payments.filter(date__range=[start_date, end_date])
+    # Sana filtri
+    if start_date_str and end_date_str:
+        try:
+            start_date = parse_date(start_date_str)
+            end_date = parse_date(end_date_str)
+            if start_date and end_date:
+                payments = payments.filter(date__range=[start_date, end_date])
+        except ValueError:
+            messages.warning(request, "Sana formati noto'g'ri.")
 
-    paginator = Paginator(payments, 10)
+    paginator = Paginator(payments, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     context = {
         'page_obj': page_obj,
         'query': query,
-        'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
-        'end_date': end_date.strftime('%Y-%m-%d') if end_date else '',
+        'start_date': start_date_str,
+        'end_date': end_date_str,
+        'total_count': payments.count()
     }
+
     return render(request, 'partners/customer_payment_list.html', context)

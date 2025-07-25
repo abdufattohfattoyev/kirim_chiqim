@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'inventory',
     'reports',
     'partners',
+    'security',
 ]
 
 MIDDLEWARE = [
@@ -54,7 +55,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.PermissionMiddleware',
+    'security.middleware.ContentSecurityPolicyMiddleware',
 ]
+
 
 
 ROOT_URLCONF = 'config.urls'
@@ -156,7 +159,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/products/'
+LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 AUTH_USER_MODEL = 'core.User'

@@ -1,0 +1,272 @@
+{% extends "index.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h4>{{ title }}</h4>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+            <div class="alert alert-dismissible fade show">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
+
+            <form method="post" id="kirim-form">
+                {% csrf_token %}
+                <div>
+                    <label for="{{ form.date.id_for_label }}">Sana*</label>
+                    {{ form.date }}
+                    {% if form.date.errors %}<div class="error">{{ form.date.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.warehouse.id_for_label }}">Ombor*</label>
+                    {{ form.warehouse }}
+                    {% if form.warehouse.errors %}<div class="error">{{ form.warehouse.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.supplier.id_for_label }}">Ta'minotchi*</label>
+                    {{ form.supplier }}
+                    {% if form.supplier.errors %}<div class="error">{{ form.supplier.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.total_amount.id_for_label }}">Jami summa*</label>
+                    {{ form.total_amount }}
+                    {% if form.total_amount.errors %}<div class="error">{{ form.total_amount.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.paid_amount.id_for_label }}">To'langan summa*</label>
+                    {{ form.paid_amount }}
+                    {% if form.paid_amount.errors %}<div class="error">{{ form.paid_amount.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="id_debt">Qarz</label>
+                    <input type="number" id="id_debt" name="debt" step="0.01" readonly value="{{ kirim.debt|floatformat:'2' }}">
+                </div>
+                <div>
+                    <label for="{{ form.note.id_for_label }}">Izoh</label>
+                    {{ form.note }}
+                    {% if form.note.errors %}<div class="error">{{ form.note.errors }}</div>{% endif %}
+                </div>
+
+                <h5>Mahsulotlar*</h5>
+                {{ formset.management_form }}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mahsulot*</th>
+                            <th>Miqdor*</th>
+                            <th>Narx*</th>
+                            <th>Jami</th>
+                            <th>Mavjud</th>
+                            <th>O'chirish</th>
+                        </tr>
+                    </thead>
+                    <tbody id="formset-container">
+                        {% for form in formset %}
+                        <tr class="formset-row" data-form-index="{{ forloop.counter0 }}">
+                            <td>
+                                {{ form.product }}
+                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                {% if form.product.errors %}<div class="error">{{ form.product.errors }}</div>{% endif %}
+                            </td>
+                            <td>
+                                {{ form.quantity }}
+                                {% if form.quantity.errors %}<div class="error">{{ form.quantity.errors }}</div>{% endif %}
+                            </td>
+                            <td>
+                                {{ form.price }}
+                                {% if form.price.errors %}<div class="error">{{ form.price.errors }}</div>{% endif %}
+                            </td>
+                            <td><input type="number" class="row-total" step="0.01" readonly value="{{ form.instance.total|floatformat:'2' }}"></td>
+                            <td><span class="available-stock">{{ form.instance.product.quantity|default:0 }}</span></td>
+                            <td>
+                                {{ form.DELETE }}
+                                <button type="button" class="delete-row">O'chirish</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="button" id="add-formset-row">Yangi mahsulot qo'shish</button>
+
+                <div>
+                    <span>Umumiy summa: <span id="grand-total">{{ kirim.total_amount|floatformat:'0' }}</span> so'm</span>
+                    <div>
+                        <a href="{% url 'incoming_list' %}" class="btn btn-secondary">Orqaga</a>
+                        <button type="submit" id="submit-btn">Saqlash</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    const formsetContainer = $('#formset-container');
+    const addButton = $('#add-formset-row');
+    const totalFormsInput = $('#id_form-TOTAL_FORMS');
+    const grandTotalDisplay = $('#grand-total');
+    let formCount = parseInt(totalFormsInput.val());
+
+    // Warehouse o'zgarishida mahsulotlarni yuklash
+    $('#id_warehouse').on('change', function() {
+        const warehouseId = $(this).val();
+        if (warehouseId) {
+            loadProductsByWarehouse(warehouseId);
+        } else {
+            $('select[name*="-product"]').html('<option value="">---------</option>');
+            $('.available-stock').text('0');
+        }
+    });
+
+    function loadProductsByWarehouse(warehouseId) {
+        $.get('/inventory/get_products_by_warehouse/', {warehouse_id: warehouseId})
+            .done(function(data) {
+                $('select[name*="-product"]').each(function() {
+                    let options = '<option value="">---------</option>';
+                    data.products.forEach(product => {
+                        options += `<option value="${product.id}" data-stock="${product.stock}" data-unit="${product.unit}">${product.name}</option>`;
+                    });
+                    $(this).html(options);
+                });
+                updateAvailableStock();
+            })
+            .fail(function() {
+                alert('Mahsulotlarni yuklashda xatolik yuz berdi');
+            });
+    }
+
+    function addNewRow() {
+        const newRow = formsetContainer.find('.formset-row').first().clone();
+        newRow.find('input, select').each(function() {
+            if (this.type === 'checkbox') {
+                this.checked = false;
+            } else if (!this.readOnly) {
+                this.value = '';
+            }
+        });
+        newRow.find('.error').remove();
+        newRow.find('.available-stock').text('0');
+        newRow.attr('data-form-index', formCount);
+        newRow.find('[name]').each(function() {
+            this.name = this.name.replace(/\d+/, formCount);
+            this.id = this.id.replace(/\d+/, formCount);
+        });
+        formsetContainer.append(newRow);
+        formCount++;
+        totalFormsInput.val(formCount);
+    }
+
+    function updateRowTotal(row) {
+        const quantity = parseFloat(row.find('input[name*="-quantity"]').val()) || 0;
+        const price = parseFloat(row.find('input[name*="-price"]').val()) || 0;
+        row.find('.row-total').val((quantity * price).toFixed(2));
+        updateGrandTotal();
+    }
+
+    function updateGrandTotal() {
+        let grandTotal = 0;
+        formsetContainer.find('.formset-row').each(function() {
+            if (!$(this).find('input[name*="-DELETE"]').prop('checked')) {
+                grandTotal += parseFloat($(this).find('.row-total').val()) || 0;
+            }
+        });
+        $('#id_total_amount').val(grandTotal.toFixed(2));
+        grandTotalDisplay.text(Math.round(grandTotal));
+        updateDebt();
+    }
+
+    function updateDebt() {
+        const total = parseFloat($('#id_total_amount').val()) || 0;
+        const paid = parseFloat($('#id_paid_amount').val()) || 0;
+        $('#id_debt').val(Math.max(0, total - paid).toFixed(2));
+    }
+
+    function updateAvailableStock() {
+        formsetContainer.find('.formset-row').each(function() {
+            const productSelect = $(this).find('select[name*="-product"]');
+            const selectedOption = productSelect.find('option:selected');
+            const stock = selectedOption.data('stock') || 0;
+            $(this).find('.available-stock').text(stock);
+        });
+    }
+
+    $(document).on('input', 'input[name*="-quantity"], input[name*="-price"]', function() {
+        updateRowTotal($(this).closest('.formset-row'));
+    });
+
+    $(document).on('change', 'select[name*="-product"]', function() {
+        const row = $(this).closest('.formset-row');
+        const selectedOption = $(this).find('option:selected');
+        const stock = selectedOption.data('stock') || 0;
+        row.find('.available-stock').text(stock);
+        updateRowTotal(row);
+    });
+
+    $(document).on('click', '.delete-row', function() {
+        $(this).closest('.formset-row').find('input[name*="-DELETE"]').prop('checked', true).closest('tr').hide();
+        updateGrandTotal();
+    });
+
+    $('#id_paid_amount').on('input', updateDebt);
+
+    $('#add-formset-row').on('click', addNewRow);
+
+    $('#kirim-form').on('submit', function(e) {
+        e.preventDefault();
+        let isValid = true;
+        const errors = [];
+
+        if (!$('#id_warehouse').val()) {
+            errors.push('Ombor tanlangan bo‘lishi kerak!');
+            isValid = false;
+        }
+
+        if (!$('#id_supplier').val()) {
+            errors.push('Ta\'minotchi tanlangan bo‘lishi kerak!');
+            isValid = false;
+        }
+
+        formsetContainer.find('.formset-row').each(function() {
+            const row = $(this);
+            if (!row.find('input[name*="-DELETE"]').prop('checked')) {
+                if (!row.find('select[name*="-product"]').val()) {
+                    errors.push('Mahsulot tanlangan bo‘lishi kerak!');
+                    isValid = false;
+                }
+                const qty = parseFloat(row.find('input[name*="-quantity"]').val()) || 0;
+                if (qty <= 0) {
+                    errors.push('Miqdor to‘g‘ri kiritilishi kerak!');
+                    isValid = false;
+                }
+                const price = parseFloat(row.find('input[name*="-price"]').val()) || 0;
+                if (price <= 0) {
+                    errors.push('Narx to‘g‘ri kiritilishi kerak!');
+                    isValid = false;
+                }
+            }
+        });
+
+        if (isValid) {
+            this.submit();
+        } else {
+            alert('Xatoliklar mavjud:\n' + errors.join('\n'));
+        }
+    });
+
+    // Boshlang‘ich hisoblanishlar
+    formsetContainer.find('.formset-row').each(function() {
+        updateRowTotal($(this));
+    });
+    updateGrandTotal();
+    updateAvailableStock();
+});
+</script>
+{% endblock %}
